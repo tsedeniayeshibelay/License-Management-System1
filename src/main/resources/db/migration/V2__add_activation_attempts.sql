@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS activation_attempts (
+    id BIGSERIAL PRIMARY KEY,
+    license_key VARCHAR(255) NOT NULL,
+    ip_address VARCHAR(255) NOT NULL,
+    country VARCHAR(255) NOT NULL,
+    attempted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    successful BOOLEAN NOT NULL
+);
