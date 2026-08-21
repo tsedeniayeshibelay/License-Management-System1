@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Failed Activation Alert</title>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; margin: 0; padding: 0; background-color: #f9f9f9; }
+        .container { max-width: 600px; margin: 20px auto; padding: 0; background-color: #ffffff; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .header { background-color: #ef4444; color: white; padding: 25px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { padding: 30px 25px; }
+        .footer { background-color: #f5f5f5; padding: 15px; text-align: center; font-size: 12px; color: #888; border-radius: 0 0 8px 8px; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h2 style="margin: 0;">⚠️ Failed License Activation Attempt</h2>
+    </div>
+    <div class="content">
+        <p>Dear <strong>{customerName}</strong>,</p>
+        <p>We detected an unsuccessful attempt to activate a license associated with your account:</p>
+        <p><strong>License:</strong> {maskedKey}</p>
+        <p><strong>Reason:</strong> {reason}</p>
+        <br>
+        <p>If you did not initiate this attempt, please review your license security settings.</p>
+        <p>Best regards,<br><strong>LockStrata Team</strong></p>
+    </div>
+    <div class="footer">
+        <p>This is an automated notification based on your notification preferences.</p>
+    </div>
+</div>
+</body>
+</html>
