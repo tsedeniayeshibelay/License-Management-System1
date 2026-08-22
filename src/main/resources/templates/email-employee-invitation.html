@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to LockStrata</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 0; background-color: #f8fafc; }
+        .container { max-width: 600px; margin: 30px auto; padding: 0; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .header { background: linear-gradient(135deg, #0f52ba, #1e40af); color: #ffffff; padding: 32px 24px; text-align: center; }
+        .header h1 { margin: 0 0 8px 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+        .header p { margin: 0; opacity: 0.9; font-size: 14px; }
+        .content { padding: 32px 28px; line-height: 1.6; }
+        .greeting { font-size: 17px; font-weight: 600; margin-bottom: 16px; color: #0f172a; }
+        .credentials-box { background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; margin: 24px 0; }
+        .cred-row { margin: 8px 0; font-size: 14px; }
+        .cred-label { font-weight: 600; color: #64748b; width: 140px; display: inline-block; }
+        .cred-value { font-family: monospace; font-weight: 700; color: #0f172a; background: #e2e8f0; padding: 3px 8px; border-radius: 4px; }
+        .warning-box { background-color: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; padding: 14px 18px; border-radius: 6px; margin: 20px 0; font-size: 13px; color: #92400e; }
+        .btn-container { text-align: center; margin: 28px 0; }
+        .btn { display: inline-block; background-color: #0f52ba; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 700; font-size: 14px; box-shadow: 0 2px 4px rgba(15,82,186,0.25); }
+        .footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>LockStrata</h1>
+        <p>Software License Management Platform</p>
+    </div>
+    <div class="content">
+        <p class="greeting">Hello {employeeName},</p>
+        <p>Your company <strong>{companyName}</strong> has created an account for you on LockStrata so you can access your company's licensed software.</p>
+        
+        <div class="credentials-box">
+            <div class="cred-row">
+                <span class="cred-label">Login Email:</span>
+                <span class="cred-value">{loginEmail}</span>
+            </div>
+            <div class="cred-row">
+                <span class="cred-label">Username:</span>
+                <span class="cred-value">{username}</span>
+            </div>
+            <div class="cred-row">
+                <span class="cred-label">Temporary Password:</span>
+                <span class="cred-value">{tempPassword}</span>
+            </div>
+        </div>
+
+        <div class="warning-box">
+            <strong>⚠️ Password Change Required:</strong><br>
+            For your security, you are required to set a new, permanent password upon your first login.
+        </div>
+
+        <div class="btn-container">
+            <a href="{loginUrl}" class="btn">Log In to Your Account</a>
+        </div>
+
+        <p style="font-size: 13px; color: #64748b;">
+            Once logged in, you will be able to see any software licenses assigned to you, download installer packages, and activate software on your work devices.
+        </p>
+
+        <p style="margin-top: 24px; font-size: 14px;">
+            Best regards,<br>
+            <strong>{companyName} & The LockStrata Team</strong>
+        </p>
+    </div>
+    <div class="footer">
+        <p>This is an automated invitation. If you believe you received this in error, please contact your company IT administrator.</p>
+    </div>
+</div>
+</body>
+</html>

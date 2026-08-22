@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>License Assigned</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 0; background-color: #f8fafc; }
+        .container { max-width: 600px; margin: 30px auto; padding: 0; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .header { background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; padding: 32px 24px; text-align: center; }
+        .header h1 { margin: 0 0 8px 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+        .header p { margin: 0; opacity: 0.9; font-size: 14px; }
+        .content { padding: 32px 28px; line-height: 1.6; }
+        .greeting { font-size: 17px; font-weight: 600; margin-bottom: 16px; color: #0f172a; }
+        .license-card { background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 24px 0; }
+        .card-row { margin: 8px 0; font-size: 14px; }
+        .card-label { font-weight: 600; color: #166534; width: 140px; display: inline-block; }
+        .card-value { font-weight: 700; color: #0f172a; }
+        .steps-box { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 24px 0; font-size: 14px; }
+        .steps-box ol { margin: 8px 0 0 0; padding-left: 20px; }
+        .steps-box li { margin-bottom: 8px; }
+        .btn-container { text-align: center; margin: 28px 0; }
+        .btn { display: inline-block; background-color: #10b981; color: #ffffff !important; text-decoration: none; padding: 12px 28px; border-radius: 8px; font-weight: 700; font-size: 14px; box-shadow: 0 2px 4px rgba(16,185,129,0.25); }
+        .footer { background-color: #f8fafc; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🎉 License Assigned</h1>
+        <p>Your company has provided software access</p>
+    </div>
+    <div class="content">
+        <p class="greeting">Hello {employeeName},</p>
+        <p>Your company <strong>{companyName}</strong> has assigned you a <strong>{productName}</strong> license.</p>
+        
+        <div class="license-card">
+            <div class="card-row">
+                <span class="card-label">Software:</span>
+                <span class="card-value">{productName}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Assigned By:</span>
+                <span class="card-value">{companyName}</span>
+            </div>
+            <div class="card-row">
+                <span class="card-label">Valid Until:</span>
+                <span class="card-value">{expiryDate}</span>
+            </div>
+        </div>
+
+        <div class="steps-box">
+            <strong>How to use your licensed software:</strong>
+            <ol>
+                <li>Log in to your LockStrata account using your credentials (<strong>{loginEmail}</strong>). <em>(If you were given a temporary password, you will be asked to set a new password on your first login.)</em></li>
+                <li>Visit your <strong>My Licenses</strong> section to view your active software and download any installers.</li>
+                <li>Launch the application on your computer and log in with your LockStrata credentials to activate automatically.</li>
+            </ol>
+        </div>
+
+        <div class="btn-container">
+            <a href="{loginUrl}" class="btn">Go to LockStrata Dashboard</a>
+        </div>
+
+        <p style="margin-top: 24px; font-size: 14px;">
+            Best regards,<br>
+            <strong>{companyName} & The LockStrata Team</strong>
+        </p>
+    </div>
+    <div class="footer">
+        <p>This is an automated notification. If you have questions about this assignment, please reach out to your IT administrator.</p>
+    </div>
+</div>
+</body>
+</html>
