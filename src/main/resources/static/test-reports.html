@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Generator Test UI</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #2c3e50; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; margin-bottom: 10px; }
+        button:hover { background-color: #2980b9; }
+        .btn-success { background-color: #2ecc71; }
+        .btn-success:hover { background-color: #27ae60; }
+        .btn-danger { background-color: #e74c3c; }
+        .btn-danger:hover { background-color: #c0392b; }
+        .hidden { display: none; }
+        #message { margin-top: 15px; padding: 10px; border-radius: 4px; text-align: center; font-weight: bold; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Report Generator Tester</h2>
+    
+    <div id="login-section">
+        <p>Please log in as an <b>Admin</b> or <b>Company</b> to test reports.</p>
+        <div class="form-group">
+            <label for="username">Username / Email</label>
+            <input type="text" id="username" placeholder="admin@example.com">
+        </div>
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter password">
+        </div>
+        <button id="login-btn">Login</button>
+    </div>
+
+    <div id="reports-section" class="hidden">
+        <p>Successfully authenticated. You can now download reports.</p>
+        <button id="download-csv-btn" class="btn-success">Download CSV Report</button>
+        <button id="download-pdf-btn" class="btn-danger">Download PDF Report</button>
+        <button id="logout-btn" style="background-color: #95a5a6; margin-top: 20px;">Logout</button>
+    </div>
+
+    <div id="message" class="hidden"></div>
+</div>
+
+<script>
+    let jwtToken = localStorage.getItem('jwtToken');
+    const API_BASE = '/api';
+
+    const loginSection = document.getElementById('login-section');
+    const reportsSection = document.getElementById('reports-section');
+    const msgDiv = document.getElementById('message');
+
+    if (jwtToken) {
+        showReports();
+    }
+
+    document.getElementById('login-btn').addEventListener('click', async () => {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        try {
+            const res = await fetch(`${API_BASE}/users/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: username, password }) // Assuming email is used for login based on placeholder
+            });
+            
+            if (res.ok) {
+                const data = await res.json();
+                jwtToken = data.token;
+                localStorage.setItem('jwtToken', jwtToken);
+                showMsg('Login successful!', 'success');
+                showReports();
+            } else {
+                showMsg('Login failed. Check credentials.', 'error');
+            }
+        } catch (e) {
+            showMsg('Error connecting to server.', 'error');
+        }
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+        jwtToken = null;
+        localStorage.removeItem('jwtToken');
+        loginSection.classList.remove('hidden');
+        reportsSection.classList.add('hidden');
+        showMsg('Logged out successfully.', 'success');
+    });
+
+    async function downloadReport(url, filename) {
+        showMsg(`Downloading ${filename}...`, 'success');
+        try {
+            const res = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${jwtToken}` }
+            });
+            
+            if (!res.ok) {
+                if(res.status === 401 || res.status === 403) {
+                    showMsg('Access Denied. Ensure you are an Admin or Company.', 'error');
+                } else {
+                    showMsg('Error downloading report.', 'error');
+                }
+                return;
+            }
+
+            const blob = await res.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            window.URL.revokeObjectURL(downloadUrl);
+            showMsg(`${filename} downloaded successfully!`, 'success');
+        } catch (e) {
+            showMsg('Error connecting to server.', 'error');
+        }
+    }
+
+    document.getElementById('download-csv-btn').addEventListener('click', () => {
+        downloadReport(`${API_BASE}/licenses/export/csv`, 'licenses.csv');
+    });
+
+    document.getElementById('download-pdf-btn').addEventListener('click', () => {
+        downloadReport(`${API_BASE}/licenses/export/pdf`, 'licenses.pdf');
+    });
+
+    function showReports() {
+        loginSection.classList.add('hidden');
+        reportsSection.classList.remove('hidden');
+    }
+
+    function showMsg(text, type) {
+        msgDiv.textContent = text;
+        msgDiv.className = type;
+        msgDiv.classList.remove('hidden');
+        setTimeout(() => msgDiv.classList.add('hidden'), 5000);
+    }
+</script>
+
+</body>
+</html>

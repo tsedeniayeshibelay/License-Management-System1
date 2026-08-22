@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activation Tester</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background-color: #f4f7f6; color: #333; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #2c3e50; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], input[type="password"], input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-size: 16px; width: 100%; margin-bottom: 10px; }
+        button:hover { background-color: #2980b9; }
+        .btn-purple { background-color: #9b59b6; }
+        .btn-purple:hover { background-color: #8e44ad; }
+        .btn-orange { background-color: #e67e22; }
+        .btn-orange:hover { background-color: #d35400; }
+        .hidden { display: none; }
+        #message { margin-top: 15px; padding: 10px; border-radius: 4px; text-align: center; font-weight: bold; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .card { border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px; background-color: #fafafa;}
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>License Activation Tester</h2>
+    
+    <div id="login-section">
+        <p>Please log in as a <b>Customer</b> to test activation.</p>
+        <div class="form-group">
+            <label>Username / Email</label>
+            <input type="text" id="username" placeholder="customer@example.com">
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="Enter password">
+        </div>
+        <button id="login-btn">Login as Customer</button>
+    </div>
+
+    <div id="activation-section" class="hidden">
+        <p style="text-align: center; color: green; font-weight: bold;">Logged in successfully!</p>
+        
+        <div class="card">
+            <h3 style="margin-top: 0;">1. Auto-Activation (Invisible Key)</h3>
+            <p style="font-size: 14px; color: #666;">The software already knows who you are from your login. It just needs the Product ID you want to activate.</p>
+            <div class="form-group">
+                <label>Product ID</label>
+                <input type="number" id="auto-product-id" placeholder="e.g. 1">
+            </div>
+            <div class="form-group">
+                <label>Mock Machine ID</label>
+                <input type="text" id="auto-machine-id" value="HW-ABC-12345">
+            </div>
+            <button id="auto-activate-btn" class="btn-purple">Trigger Auto-Activate</button>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top: 0;">2. Standard Activation (Visible Key)</h3>
+            <p style="font-size: 14px; color: #666;">If auto-activation isn't used, the user manually pastes their license key.</p>
+            <div class="form-group">
+                <label>License Key</label>
+                <input type="text" id="manual-license-key" placeholder="XXXX-XXXX-XXXX-XXXX">
+            </div>
+            <div class="form-group">
+                <label>Mock Machine ID</label>
+                <input type="text" id="manual-machine-id" value="HW-XYZ-98765">
+            </div>
+            <button id="manual-activate-btn" class="btn-orange">Trigger Standard Activate</button>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top: 0;">3. Offline Activation (Generate File)</h3>
+            <p style="font-size: 14px; color: #666;">Generates a .lic file for a PC without internet.</p>
+            <div class="form-group">
+                <label>Product ID</label>
+                <input type="number" id="offline-product-id" placeholder="e.g. 1">
+            </div>
+            <div class="form-group">
+                <label>Offline Machine ID</label>
+                <input type="text" id="offline-machine-id" value="HW-OFFLINE-000">
+            </div>
+            <button id="offline-gen-btn" style="background-color: #27ae60;">Generate & Download .lic File</button>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top: 0;">4. Offline Validation</h3>
+            <p style="font-size: 14px; color: #666;">Simulate the offline app reading the .lic file.</p>
+            <div class="form-group">
+                <input type="file" id="offline-file-input">
+            </div>
+            <button id="offline-val-btn" style="background-color: #34495e;">Validate File</button>
+        </div>
+
+        <button id="logout-btn" style="background-color: #95a5a6; margin-top: 20px;">Logout</button>
+    </div>
+
+    <div id="message" class="hidden"></div>
+</div>
+
+<script>
+    let jwtToken = localStorage.getItem('jwtToken');
+    const API_BASE = '/api';
+
+    const loginSection = document.getElementById('login-section');
+    const activationSection = document.getElementById('activation-section');
+    const msgDiv = document.getElementById('message');
+
+    if (jwtToken) showSection();
+
+    document.getElementById('login-btn').addEventListener('click', async () => {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        try {
+            const res = await fetch(`${API_BASE}/users/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: username, password })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                jwtToken = data.token;
+                localStorage.setItem('jwtToken', jwtToken);
+                showMsg('Login successful!', 'success');
+                showSection();
+            } else {
+                showMsg('Login failed. Check credentials.', 'error');
+            }
+        } catch (e) {
+            showMsg('Error connecting to server.', 'error');
+        }
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+        jwtToken = null;
+        localStorage.removeItem('jwtToken');
+        loginSection.classList.remove('hidden');
+        activationSection.classList.add('hidden');
+        showMsg('Logged out.', 'success');
+    });
+
+    document.getElementById('auto-activate-btn').addEventListener('click', async () => {
+        const productId = document.getElementById('auto-product-id').value;
+        const machineId = document.getElementById('auto-machine-id').value;
+        
+        if(!productId) { showMsg('Please enter a Product ID', 'error'); return; }
+
+        try {
+            const res = await fetch(`${API_BASE}/activations/auto`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${jwtToken}`
+                },
+                body: JSON.stringify({ 
+                    productId: parseInt(productId), 
+                    machineId: machineId,
+                    deviceName: "Test PC",
+                    os: "Windows 11"
+                })
+            });
+            
+            if (res.ok) {
+                showMsg(`✅ Auto-Activation Successful! Machine ${machineId} is authorized.`, 'success');
+            } else {
+                const err = await res.json();
+                showMsg(`❌ Error: ${err.message || 'Auto-activation failed'}`, 'error');
+            }
+        } catch (e) {
+            showMsg('Error connecting to server.', 'error');
+        }
+    });
+
+    document.getElementById('manual-activate-btn').addEventListener('click', async () => {
+        const licenseKey = document.getElementById('manual-license-key').value;
+        const machineId = document.getElementById('manual-machine-id').value;
+        
+        if(!licenseKey) { showMsg('Please enter a License Key', 'error'); return; }
+
+        try {
+            const res = await fetch(`${API_BASE}/activations`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${jwtToken}`
+                },
+                body: JSON.stringify({ 
+                    licenseKey: licenseKey, 
+                    machineId: machineId,
+                    deviceName: "Test PC",
+                    os: "Windows 11"
+                })
+            });
+            
+            if (res.ok) {
+                showMsg(`✅ Standard Activation Successful for key ${licenseKey}!`, 'success');
+            } else {
+                const err = await res.json();
+                showMsg(`❌ Error: ${err.message || 'Activation failed'}`, 'error');
+            }
+        } catch (e) {
+            showMsg('Error connecting to server.', 'error');
+        }
+    });
+
+    document.getElementById('offline-gen-btn').addEventListener('click', async () => {
+        const productId = document.getElementById('offline-product-id').value;
+        const machineId = document.getElementById('offline-machine-id').value;
+        
+        if(!productId) { showMsg('Please enter a Product ID', 'error'); return; }
+
+        try {
+            const res = await fetch(`${API_BASE}/activations/offline/generate-file`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${jwtToken}`
+                },
+                body: JSON.stringify({ 
+                    productId: parseInt(productId), 
+                    machineId: machineId,
+                    deviceName: "Test PC",
+                    os: "Windows 11"
+                })
+            });
+            
+            if (res.ok) {
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'license.lic';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                showMsg(`✅ Offline file generated and downloaded!`, 'success');
+            } else {
+                const err = await res.json();
+                showMsg(`❌ Error: ${err.message || 'Generation failed'}`, 'error');
+            }
+        } catch (e) {
+            showMsg('Error connecting to server.', 'error');
+        }
+    });
+
+    document.getElementById('offline-val-btn').addEventListener('click', async () => {
+        const fileInput = document.getElementById('offline-file-input');
+        if (fileInput.files.length === 0) {
+            showMsg('Please select a file first', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", fileInput.files[0]);
+
+        try {
+            const res = await fetch(`${API_BASE}/licenses/offline/validate`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${jwtToken}`
+                },
+                body: formData
+            });
+
+            const responseData = await res.json();
+            
+            if (res.ok) {
+                showMsg(`✅ Validation Success: ${responseData.message}`, 'success');
+            } else {
+                showMsg(`❌ Validation Failed: ${responseData.message || 'Invalid file'}`, 'error');
+            }
+        } catch (e) {
+            showMsg('Error connecting to server.', 'error');
+        }
+    });
+
+    function showSection() {
+        loginSection.classList.add('hidden');
+        activationSection.classList.remove('hidden');
+    }
+
+    function showMsg(text, type) {
+        msgDiv.textContent = text;
+        msgDiv.className = type;
+        msgDiv.classList.remove('hidden');
+        setTimeout(() => msgDiv.classList.add('hidden'), 5000);
+    }
+</script>
+
+</body>
+</html>
