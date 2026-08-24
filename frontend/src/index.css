@@ -1,0 +1,176 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+body {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* =========================================================
+   LIGHT MODE OVERRIDES FOR ADMIN AND PORTAL THEMES
+   Applied whenever html is NOT dark (or explicitly .light)
+   ========================================================= */
+
+html:not(.dark), html.light {
+  color-scheme: light;
+}
+
+html:not(.dark) body, html.light body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* Base dark container backgrounds translated to clean, modern light theme */
+html:not(.dark) .bg-\[\#0b0f19\],
+html.light .bg-\[\#0b0f19\] {
+  background-color: #f8fafc !important;
+}
+
+html:not(.dark) .bg-\[\#0b0f19\]\/50,
+html.light .bg-\[\#0b0f19\]\/50,
+html:not(.dark) .bg-\[\#0b0f19\]\/80,
+html.light .bg-\[\#0b0f19\]\/80,
+html:not(.dark) .bg-\[\#0b0f19\]\/90,
+html.light .bg-\[\#0b0f19\]\/90,
+html:not(.dark) [class*="bg-[#0b0f19]"],
+html.light [class*="bg-[#0b0f19]"] {
+  background-color: #f8fafc !important;
+}
+
+html:not(.dark) .bg-\[\#111827\],
+html.light .bg-\[\#111827\],
+html:not(.dark) [class*="bg-[#111827]"],
+html.light [class*="bg-[#111827]"] {
+  background-color: #ffffff !important;
+}
+
+html:not(.dark) .bg-\[\#070b14\],
+html.light .bg-\[\#070b14\],
+html:not(.dark) [class*="bg-[#070b14]"],
+html.light [class*="bg-[#070b14]"] {
+  background-color: #ffffff !important;
+}
+
+html:not(.dark) .bg-\[\#131b2e\],
+html.light .bg-\[\#131b2e\],
+html:not(.dark) .bg-\[\#0f172a\],
+html.light .bg-\[\#0f172a\] {
+  background-color: #f1f5f9 !important;
+}
+
+/* Borders in light mode */
+html:not(.dark) .border-slate-800,
+html.light .border-slate-800,
+html:not(.dark) .border-slate-800\/80,
+html.light .border-slate-800\/80,
+html:not(.dark) .border-slate-800\/60,
+html.light .border-slate-800\/60,
+html:not(.dark) .border-slate-800\/50,
+html.light .border-slate-800\/50,
+html:not(.dark) .border-slate-700,
+html.light .border-slate-700,
+html:not(.dark) .border-slate-700\/50,
+html.light .border-slate-700\/50,
+html:not(.dark) .border-slate-700\/80,
+html.light .border-slate-700\/80 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Primary text in light mode */
+html:not(.dark) .text-white,
+html.light .text-white {
+  color: #0f172a !important;
+}
+
+/* Ensure buttons, badges, and colored accents retain white text when needed */
+html:not(.dark) button.text-white,
+html.light button.text-white,
+html:not(.dark) button .text-white,
+html.light button .text-white,
+html:not(.dark) .btn,
+html.light .btn,
+html:not(.dark) .keep-text-white,
+html.light .keep-text-white,
+html:not(.dark) [class*="bg-indigo"] .text-white,
+html.light [class*="bg-indigo"] .text-white,
+html:not(.dark) [class*="bg-blue"] .text-white,
+html.light [class*="bg-blue"] .text-white,
+html:not(.dark) [class*="bg-emerald"] .text-white,
+html.light [class*="bg-emerald"] .text-white,
+html:not(.dark) [class*="bg-purple"] .text-white,
+html.light [class*="bg-purple"] .text-white,
+html:not(.dark) [class*="bg-rose"] .text-white,
+html.light [class*="bg-rose"] .text-white,
+html:not(.dark) [class*="bg-red"] .text-white,
+html.light [class*="bg-red"] .text-white,
+html:not(.dark) .bg-slate-700 .text-white,
+html.light .bg-slate-700 .text-white,
+html:not(.dark) .bg-slate-800 .text-white,
+html.light .bg-slate-800 .text-white,
+html:not(.dark) svg.text-white,
+html.light svg.text-white {
+  color: #ffffff !important;
+}
+
+/* Secondary & muted text in light mode */
+html:not(.dark) .text-slate-400,
+html.light .text-slate-400 {
+  color: #64748b !important;
+}
+
+html:not(.dark) .text-slate-300,
+html.light .text-slate-300 {
+  color: #475569 !important;
+}
+
+/* Hover styles in light mode */
+html:not(.dark) .hover\:text-white:hover,
+html.light .hover\:text-white:hover {
+  color: #0f172a !important;
+}
+
+html:not(.dark) .hover\:bg-slate-800:hover,
+html.light .hover\:bg-slate-800:hover,
+html:not(.dark) .hover\:bg-slate-800\/50:hover,
+html.light .hover\:bg-slate-800\/50:hover,
+html:not(.dark) .hover\:bg-slate-800\/40:hover,
+html.light .hover\:bg-slate-800\/40:hover,
+html:not(.dark) .hover\:bg-\[\#111827\]:hover,
+html.light .hover\:bg-\[\#111827\]:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Form inputs & controls in light mode */
+html:not(.dark) input.bg-\[\#0b0f19\],
+html.light input.bg-\[\#0b0f19\],
+html:not(.dark) textarea.bg-\[\#0b0f19\],
+html.light textarea.bg-\[\#0b0f19\],
+html:not(.dark) select.bg-\[\#0b0f19\],
+html.light select.bg-\[\#0b0f19\] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html:not(.dark) input.bg-\[\#0b0f19\]\/50,
+html.light input.bg-\[\#0b0f19\]\/50 {
+  background-color: #f8fafc !important;
+  color: #64748b !important;
+  border-color: #e2e8f0 !important;
+}
+
+/* Tables & Dividers in light mode */
+html:not(.dark) thead.bg-\[\#0b0f19\],
+html.light thead.bg-\[\#0b0f19\] {
+  background-color: #f8fafc !important;
+  color: #475569 !important;
+}
+
+html:not(.dark) .divide-slate-800 > :not([hidden]) ~ :not([hidden]),
+html.light .divide-slate-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e2e8f0 !important;
+}
+
