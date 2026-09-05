@@ -1,12 +1,16 @@
-# 🛡️ LockStrata — Enterprise Software License Management System
+<div align="center">
 
-<p align="center">
-  <img src="frontend/src/assets/hero.png" alt="LockStrata Platform" width="850" style="border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.25);" />
-</p>
+# 🛡️ LockStrata
+### Enterprise Software Licensing & Digital Rights Management Engine
 
-<p align="center">
-  <strong>A resilient, production-grade Software Licensing & Digital Rights Management (DRM) platform designed for Independent Software Vendors (ISVs), B2B Enterprise SaaS, and on-premise software distributors.</strong>
-</p>
+```text
+  _               _    ____  _             _        
+ | |    ___   ___| | _/ ___|| |_ _ __ __ _| |_ __ _ 
+ | |   / _ \ / __| |/ \___ \| __| '__/ _` | __/ _` |
+ | |__| (_) | (__|   < ___) | |_| | | (_| | || (_| |
+ |_____\___/ \___|_|\_\____/ \__|_|  \__,_|\__\__,_|
+ Automated DRM • AirGap Vaults • QR Handshakes • Multi-Tier Licensing
+```
 
 <p align="center">
   <a href="#-key-features"><img src="https://img.shields.io/badge/Spring%20Boot-3.3.x-6DB33F?style=for-the-badge&logo=springboot&logoColor=white" alt="Spring Boot 3" /></a>
@@ -18,6 +22,22 @@
   <a href="#-key-features"><img src="https://img.shields.io/badge/Security-JWT%20%2B%20RSA%20%2B%20HMAC-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white" alt="Security" /></a>
   <a href="#-license"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License" /></a>
 </p>
+
+</div>
+
+```bash
+$ lockstrata activate --key LS-9A4B-882C-1E4F --hwid HW-7F90B1A4
+[✔] Hardware Identity Verified: Node-Locked [Motherboard: UUID-8821 | CPU: GenuineIntel]
+[✔] Cryptographic Handshake: HMAC-SHA256 Signature Validated
+[✔] Entitlements Loaded: Enterprise Unlimited Seats | AirGap Vault Enabled
+[🚀] Software Activated Successfully. Welcome to LockStrata DRM.
+```
+
+> **LockStrata** is an enterprise Software Licensing and Digital Rights Management (DRM) platform engineered for modern desktop applications, on-premise deployments, and SaaS ecosystems. It delivers tamper-resistant node-locking, AirGap offline activation, companion visual QR handshakes, and autonomous enterprise seat distribution.
+
+| ☁️ **CloudSync Online** | 🛡️ **AirGap Secure Vault** | 📱 **Visual QR Handshake** | 🏢 **B2B Bulk Buyer Portal** |
+| :---: | :---: | :---: | :---: |
+| Instant machine heartbeat & remote unbind over HTTPS | Cryptographically signed offline `.lic` certificates for isolated networks | Dynamic expiring 5-min QR code scanned via companion mobile | Autonomous floating seat pools & corporate employee invites |
 
 ---
 
@@ -47,7 +67,7 @@
 - [Project Directory Structure](#-project-directory-structure)
 - [Security & Threat Mitigation](#-security--threat-mitigation)
 - [Testing & Quality Assurance](#-testing--quality-assurance)
-- [Authors & Acknowledgments](#-authors--acknowledgments)
+- [Contributors](#-contributors)
 - [License](#-license)
 
 ---
@@ -488,10 +508,9 @@ mvn test -Dtest=ActivationModelTest
 
 ---
 
-## 👨‍💻 Authors & Acknowledgments
+## 👥 Contributors
 
-- **Lead Architecture & Implementation**: **Caleb Mitiku** ([@Kaleb721](https://github.com/Kaleb721)) — *Full Stack Engineer & Cryptographic DRM Architecture*
-- **Contributors**: *Software Engineering Team (Members 1 - 5)*
+- **Software Engineering Team** (Members 1 – 5)
 
 ---
 
