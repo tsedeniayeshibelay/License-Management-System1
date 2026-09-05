@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AirGap Secure Vault - Offline Mode</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #052e16, #064e3b);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .app-window {
+            width: 480px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .title-bar {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #a7f3d0;
+        }
+        .content {
+            padding: 32px;
+        }
+        h1 {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(to right, #34d399, #10b981);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        p {
+            margin: 0 0 24px 0;
+            font-size: 14px;
+            color: #d1fae5;
+            line-height: 1.5;
+        }
+        .drop-zone {
+            border: 2px dashed rgba(52, 211, 153, 0.4);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        .drop-zone:hover, .drop-zone.dragover {
+            background: rgba(52, 211, 153, 0.1);
+            border-color: #34d399;
+        }
+        .drop-zone input[type="file"] {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            color: #34d399;
+        }
+        .status {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            display: none;
+            text-align: center;
+            font-weight: 500;
+        }
+        .status.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-window" id="app">
+    <div class="title-bar">
+        🔒 AirGap Secure Vault - OFFLINE ENVIRONMENT
+    </div>
+    <div class="content" id="main-view">
+        <h1>Offline Activation Required</h1>
+        <p>This computer is disconnected from the internet. To unlock AirGap Secure Vault, please provide your cryptographic <code>.lic</code> file.</p>
+        
+        <div class="drop-zone" id="drop-zone">
+            <input type="file" id="file-input" accept=".lic,.json" />
+            <div class="icon">📁</div>
+            <div style="font-weight: 600; margin-bottom: 4px;">Click or drag license.lic here</div>
+            <div style="font-size: 12px; color: #a7f3d0; opacity: 0.8;">Cryptographic signature will be verified locally</div>
+        </div>
+
+        <div id="status-msg" class="status"></div>
+    </div>
+</div>
+
+<script>
+    const fileInput = document.getElementById('file-input');
+    const dropZone = document.getElementById('drop-zone');
+
+    // Handle drag and drop visuals
+    ['dragenter', 'dragover'].forEach(evt => {
+        dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+    });
+    ['dragleave', 'drop'].forEach(evt => {
+        dropZone.addEventListener(evt, (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            processFile(e.target.files[0]);
+        }
+    });
+
+    function processFile(file) {
+        showStatus('', '');
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                // Parse the offline .lic file content
+                const data = JSON.parse(e.target.result);
+                
+                if (!data.payload || !data.signature) {
+                    throw new Error("Invalid license file format. Missing cryptographic payload or signature.");
+                }
+
+                // Decode the base64 payload to read the license contents
+                const decodedPayloadStr = atob(data.payload);
+                const payloadObj = JSON.parse(decodedPayloadStr);
+
+                // Simulation of cryptographic verification 
+                // (In reality, we would verify data.signature against the payload using HMAC or RSA public key here)
+                
+                // Show Success Screen
+                document.getElementById('main-view').innerHTML = `
+                    <div style="text-align: center; padding: 20px 0;">
+                        <div style="font-size: 56px; margin-bottom: 16px;">✅</div>
+                        <h1 style="background: linear-gradient(to right, #34d399, #10b981); -webkit-background-clip: text; color: transparent;">Signature Verified!</h1>
+                        <p style="color: #a7f3d0; margin-bottom: 24px;">This Vault has been fully activated without touching the internet.</p>
+                        
+                        <div style="background: rgba(0,0,0,0.3); border: 1px solid rgba(52, 211, 153, 0.2); padding: 16px; border-radius: 8px; text-align: left; font-size: 13px; color: #d1fae5;">
+                            <div style="margin-bottom: 8px;"><strong style="color: #34d399;">License Key:</strong><br> <span style="font-family: monospace;">${payloadObj.licenseKey}</span></div>
+                            <div style="margin-bottom: 8px;"><strong style="color: #34d399;">Device Verified:</strong><br> ${payloadObj.hardwareId || 'N/A'}</div>
+                            <div style="margin-bottom: 8px;"><strong style="color: #34d399;">Issued:</strong><br> ${new Date(payloadObj.timestamp).toLocaleString()}</div>
+                        </div>
+                        
+                        <button onclick="location.reload()" style="margin-top: 24px; padding: 12px 24px; background: rgba(52, 211, 153, 0.2); border: 1px solid #34d399; color: #34d399; border-radius: 8px; font-weight: bold; cursor: pointer;">Close & Enter Vault</button>
+                    </div>
+                `;
+
+            } catch (err) {
+                console.error(err);
+                showStatus("Error: " + err.message, "error");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function showStatus(msg, type) {
+        const el = document.getElementById('status-msg');
+        el.className = 'status ' + type;
+        el.innerText = msg;
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudSync Auto - Desktop Client</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .app-window {
+            width: 400px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .title-bar {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px 16px;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #94a3b8;
+        }
+        .content {
+            padding: 32px;
+        }
+        h1 {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: 700;
+            background: linear-gradient(to right, #38bdf8, #818cf8);
+            -webkit-background-clip: text;
+            color: transparent;
+        }
+        p {
+            margin: 0 0 24px 0;
+            font-size: 14px;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+        .input-group {
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #cbd5e1;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: all 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #38bdf8;
+            background: rgba(0, 0, 0, 0.3);
+            box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #0ea5e9, #6366f1);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+        }
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(14, 165, 233, 0.4);
+        }
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .status {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            display: none;
+            text-align: center;
+            font-weight: 500;
+        }
+        .status.error {
+            display: block;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+        }
+        .status.success {
+            display: block;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            color: #86efac;
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-window" id="app">
+    <div class="title-bar">
+        ☁️ CloudSync Auto Setup
+    </div>
+    <div class="content" id="login-view">
+        <h1>Activate Software</h1>
+        <p>Enter your LockStrata account credentials to verify your license and activate this computer.</p>
+        
+        <div class="input-group">
+            <label>Email Address</label>
+            <input type="email" id="email" placeholder="you@example.com" />
+        </div>
+        <div class="input-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="••••••••" />
+        </div>
+        
+        <button id="login-btn" onclick="activateSoftware()">Verify & Activate</button>
+        <div id="status-msg" class="status"></div>
+    </div>
+</div>
+
+<script>
+    const baseUrl = 'http://localhost:8080/api';
+    
+    // Generate a random hardware ID for this "computer"
+    const hwId = 'HW-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+
+    async function activateSoftware() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const btn = document.getElementById('login-btn');
+        const status = document.getElementById('status-msg');
+        
+        if (!email || !password) {
+            showStatus('Please enter email and password.', 'error');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerText = 'Authenticating...';
+        showStatus('', '');
+
+        try {
+            // Step 1: Login to get token
+            const loginRes = await fetch(`${baseUrl}/users/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+
+            if (!loginRes.ok) {
+                throw new Error('Invalid email or password.');
+            }
+
+            const loginData = await loginRes.json();
+            const token = loginData.token;
+
+            btn.innerText = 'Activating License...';
+
+            // Step 2: Request auto-activation
+            const actRes = await fetch(`${baseUrl}/activations/auto`, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    productId: 16, // CloudSync Auto ID
+                    machineId: hwId,
+                    deviceName: 'My Personal Desktop'
+                })
+            });
+
+            const actData = await actRes.json();
+
+            if (!actRes.ok) {
+                throw new Error(actData.message || 'No valid license found for this product.');
+            }
+
+            // Success!
+            document.getElementById('login-view').innerHTML = `
+                <div style="text-align: center; padding: 20px 0;">
+                    <div style="font-size: 48px; margin-bottom: 16px;">🎉</div>
+                    <h1>Activation Complete!</h1>
+                    <p style="color: #86efac; margin-bottom: 24px;">CloudSync Auto is fully licensed and ready to use on this computer.</p>
+                    <div style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; text-align: left; font-size: 12px; color: #94a3b8;">
+                        <strong>Device Name:</strong> My Personal Desktop<br>
+                        <strong>Hardware ID:</strong> ${hwId}
+                    </div>
+                </div>
+            `;
+            
+        } catch (err) {
+            showStatus(err.message, 'error');
+            btn.disabled = false;
+            btn.innerText = 'Verify & Activate';
+        }
+    }
+
+    function showStatus(msg, type) {
+        const el = document.getElementById('status-msg');
+        el.className = 'status ' + type;
+        el.innerText = msg;
+    }
+</script>
+
+</body>
+</html>
