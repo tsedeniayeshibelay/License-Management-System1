@@ -101,7 +101,7 @@ public class ActivationModelTest {
     public void testQRSecurityFlow_SuccessAndReplay() throws Exception {
         // 1. App requests QR token (public)
         QRRequestDto reqDto = new QRRequestDto();
-        reqDto.setProductId(testProduct.getId());
+        reqDto.setProductId(String.valueOf(testProduct.getId()));
         reqDto.setMachineId("mach-qr-123");
         reqDto.setInstallationId("inst-qr-123");
         reqDto.setDeviceName("QR App Device");
@@ -177,7 +177,7 @@ public class ActivationModelTest {
     @Test
     public void testOfflineTamperingAndReplay() throws Exception {
         OfflineFileRequest fileReq = new OfflineFileRequest();
-        fileReq.setProductId(testProduct.getId());
+        fileReq.setProductId(String.valueOf(testProduct.getId()));
         fileReq.setMachineId("mach-off-123");
         fileReq.setInstallationId("inst-off-123");
         fileReq.setDeviceName("Offline Node");
@@ -207,7 +207,7 @@ public class ActivationModelTest {
 
         // 3. Upload EXPIRED file -> Should fail
         OfflineFileRequest expiredReq = new OfflineFileRequest();
-        expiredReq.setProductId(testProduct.getId());
+        expiredReq.setProductId(String.valueOf(testProduct.getId()));
         expiredReq.setMachineId("mach-off-456");
         expiredReq.setRequestId(UUID.randomUUID().toString());
         expiredReq.setRequestExpiration(System.currentTimeMillis() - 1000); // Expired
@@ -224,7 +224,7 @@ public class ActivationModelTest {
     @Test
     public void testAutoActivationCompatibility() throws Exception {
         AutoActivationRequest autoReq = new AutoActivationRequest();
-        autoReq.setProductId(testProduct.getId());
+        autoReq.setProductId(String.valueOf(testProduct.getId()));
         autoReq.setMachineId("mach-auto-123");
         autoReq.setInstallationId("inst-auto-123");
         autoReq.setDeviceName("Auto PC");

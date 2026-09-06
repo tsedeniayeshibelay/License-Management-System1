@@ -24,6 +24,7 @@ import java.util.Map;
 public class BulkBuyerController {
 
     private final BulkBuyerService bulkBuyerService;
+    private final com.licensemanagement.backend.service.WebhookService webhookService;
 
     @GetMapping("/employees")
     public ResponseEntity<List<User>> getEmployees() {
@@ -106,6 +107,14 @@ public class BulkBuyerController {
     @GetMapping("/analytics")
     public ResponseEntity<com.licensemanagement.backend.dto.AnalyticsDto> getAnalytics() {
         return ResponseEntity.ok(bulkBuyerService.getCompanyAnalytics());
+    }
+
+    @PostMapping("/webhook/test")
+    public ResponseEntity<com.licensemanagement.backend.dto.WebhookTestResult> testWebhook(@RequestBody(required = false) Map<String, String> body) {
+        String url = (body != null && body.get("webhookUrl") != null && !body.get("webhookUrl").isBlank())
+                ? body.get("webhookUrl")
+                : bulkBuyerService.getCompanySettings().getWebhookUrl();
+        return ResponseEntity.ok(webhookService.testWebhook(url));
     }
 
     @PostMapping("/licenses/check-expirations")

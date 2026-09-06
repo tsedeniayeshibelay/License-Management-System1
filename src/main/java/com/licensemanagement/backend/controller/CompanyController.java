@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.Map;
 import com.licensemanagement.backend.annotation.LogAdminAction;
 import com.licensemanagement.backend.entity.ActivityLog;
 import com.licensemanagement.backend.entity.User;
@@ -21,6 +22,7 @@ public class CompanyController {
     private final CompanyService companyService;
     private final ActivityLogService activityLogService;
     private final CurrentUserProvider currentUserProvider;
+    private final com.licensemanagement.backend.service.WebhookService webhookService;
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -36,6 +38,42 @@ public class CompanyController {
     @GetMapping("/active")
     public ResponseEntity<List<Company>> getActiveCompanies() {
         return ResponseEntity.ok(companyService.getActiveCompanies());
+    }
+
+    @GetMapping("/my-company")
+    @PreAuthorize("hasAnyRole('COMPANY', 'ADMIN')")
+    public ResponseEntity<Company> getMyCompany() {
+        User currentUser = currentUserProvider.getCurrentUser();
+        if (currentUser.getCompanyId() == null) {
+            throw new com.licensemanagement.backend.exception.ResourceNotFoundException("User is not associated with any company");
+        }
+        return ResponseEntity.ok(companyService.getCompanyById(currentUser.getCompanyId()));
+    }
+
+    @PutMapping("/my-company/webhook")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<Company> updateMyWebhook(@RequestBody Map<String, String> body) {
+        User currentUser = currentUserProvider.getCurrentUser();
+        if (currentUser.getCompanyId() == null) {
+            throw new com.licensemanagement.backend.exception.ResourceNotFoundException("User is not associated with any company");
+        }
+        Company company = companyService.getCompanyById(currentUser.getCompanyId());
+        String webhookUrl = body.get("webhookUrl");
+        company.setWebhookUrl(webhookUrl != null ? webhookUrl.trim() : null);
+        return ResponseEntity.ok(companyService.updateCompany(company.getId(), company));
+    }
+
+    @PostMapping("/my-company/webhook/test")
+    @PreAuthorize("hasRole('COMPANY')")
+    public ResponseEntity<com.licensemanagement.backend.dto.WebhookTestResult> testMyCompanyWebhook(@RequestBody(required = false) Map<String, String> body) {
+        User currentUser = currentUserProvider.getCurrentUser();
+        if (currentUser.getCompanyId() == null) {
+            throw new com.licensemanagement.backend.exception.ResourceNotFoundException("User is not associated with any company");
+        }
+        String url = (body != null && body.get("webhookUrl") != null && !body.get("webhookUrl").isBlank())
+                ? body.get("webhookUrl")
+                : companyService.getCompanyById(currentUser.getCompanyId()).getWebhookUrl();
+        return ResponseEntity.ok(webhookService.testWebhook(url));
     }
 
     @GetMapping("/my-activity")

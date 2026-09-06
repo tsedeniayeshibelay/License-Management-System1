@@ -1,0 +1,20 @@
+package com.licensemanagement.backend.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class ResetPasswordRequest {
+    private String token;
+    private String code;
+    
+    @NotBlank(message = "New password is required")
+    private String newPassword;
+    
+    @NotBlank(message = "Confirm password is required")
+    private String confirmPassword;
+}

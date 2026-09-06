@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import api from '../services/api'
 
@@ -13,9 +13,27 @@ function Register() {
     role: 'CUSTOMER',
     company: ''
   })
+  const [unlocked, setUnlocked] = useState(false)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    // Explicitly reset form data on mount to prevent browser credential managers from injecting values
+    setFormData({
+      username: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      fullName: '',
+      role: 'CUSTOMER',
+      company: ''
+    })
+    const timer = setTimeout(() => {
+      setUnlocked(true)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [])
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -88,7 +106,12 @@ function Register() {
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Join LockStrata today.</p>
       </div>
 
-      <form className="space-y-5" onSubmit={handleSubmit}>
+      <form className="space-y-5" onSubmit={handleSubmit} autoComplete="off">
+        {/* Invisible decoy inputs to absorb aggressive browser autofill heuristics */}
+        <div style={{ position: 'absolute', opacity: 0, height: 0, width: 0, overflow: 'hidden', zIndex: -1 }}>
+          <input type="text" name="fake_username_autofill_trap" tabIndex="-1" autoComplete="off" />
+          <input type="password" name="fake_password_autofill_trap" tabIndex="-1" autoComplete="off" />
+        </div>
         
         {/* Row 1: Full Name & Username */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -96,7 +119,7 @@ function Register() {
             <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Full Name</label>
             <div className="relative">
               <IconUser />
-              <input name="fullName" type="text" required placeholder="John Doe" value={formData.fullName} onChange={handleChange}
+              <input name="fullName" type="text" required placeholder="John Doe" value={formData.fullName} onChange={handleChange} autoComplete="off"
                 className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white shadow-sm dark:shadow-none" />
             </div>
           </div>
@@ -104,7 +127,17 @@ function Register() {
             <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Username</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">@</span>
-              <input name="username" type="text" required placeholder="johndoe" value={formData.username} onChange={handleChange}
+              <input 
+                name="username" 
+                type="text" 
+                required 
+                placeholder="johndoe" 
+                value={formData.username} 
+                onChange={handleChange}
+                autoComplete="off"
+                readOnly={!unlocked}
+                onFocus={() => setUnlocked(true)}
+                onClick={() => setUnlocked(true)}
                 className="w-full pl-9 pr-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white shadow-sm dark:shadow-none" />
             </div>
           </div>
@@ -116,7 +149,17 @@ function Register() {
             <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Email Address</label>
             <div className="relative">
               <IconMail />
-              <input name="email" type="email" required placeholder="john@company.com" value={formData.email} onChange={handleChange}
+              <input 
+                name="email" 
+                type="email" 
+                required 
+                placeholder="john@company.com" 
+                value={formData.email} 
+                onChange={handleChange}
+                autoComplete="off"
+                readOnly={!unlocked}
+                onFocus={() => setUnlocked(true)}
+                onClick={() => setUnlocked(true)}
                 className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white shadow-sm dark:shadow-none" />
             </div>
           </div>
@@ -143,7 +186,7 @@ function Register() {
             <label className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider ml-1">Company Name</label>
             <div className="relative">
               <IconBuilding />
-              <input name="company" type="text" required placeholder="Acme Corp" value={formData.company} onChange={handleChange}
+              <input name="company" type="text" required placeholder="Acme Corp" value={formData.company} onChange={handleChange} autoComplete="off"
                 className="w-full pl-10 pr-4 py-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700/50 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500 text-slate-900 dark:text-white shadow-sm dark:shadow-none" />
             </div>
           </div>
@@ -155,7 +198,17 @@ function Register() {
             <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Password</label>
             <div className="relative">
               <IconLock />
-              <input name="password" type="password" required placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" value={formData.password} onChange={handleChange}
+              <input 
+                name="password" 
+                type="password" 
+                required 
+                placeholder="••••••••" 
+                value={formData.password} 
+                onChange={handleChange}
+                autoComplete="new-password"
+                readOnly={!unlocked}
+                onFocus={() => setUnlocked(true)}
+                onClick={() => setUnlocked(true)}
                 className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white tracking-widest shadow-sm dark:shadow-none" />
             </div>
           </div>
@@ -163,7 +216,17 @@ function Register() {
             <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Confirm Password</label>
             <div className="relative">
               <IconLock />
-              <input name="confirmPassword" type="password" required placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" value={formData.confirmPassword} onChange={handleChange}
+              <input 
+                name="confirmPassword" 
+                type="password" 
+                required 
+                placeholder="••••••••" 
+                value={formData.confirmPassword} 
+                onChange={handleChange}
+                autoComplete="new-password"
+                readOnly={!unlocked}
+                onFocus={() => setUnlocked(true)}
+                onClick={() => setUnlocked(true)}
                 className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white tracking-widest shadow-sm dark:shadow-none" />
             </div>
           </div>

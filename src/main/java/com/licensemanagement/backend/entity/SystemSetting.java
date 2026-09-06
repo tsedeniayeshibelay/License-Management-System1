@@ -33,6 +33,9 @@ public class SystemSetting {
     @Column(name = "debug_logging", nullable = false)
     private Boolean debugLogging = false;
 
+    @Column(name = "webhook_url")
+    private String webhookUrl;
+
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 

@@ -1,0 +1,1 @@
+ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS webhook_url VARCHAR(1024);

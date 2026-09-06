@@ -79,6 +79,10 @@ function BulkBuyerSettings({ userName, userRole }) {
   const [passwordSuccessMsg, setPasswordSuccessMsg] = useState('')
   const [securitySavedMsg, setSecuritySavedMsg] = useState('')
 
+  // Webhook Test State
+  const [testingWebhook, setTestingWebhook] = useState(false)
+  const [webhookTestResult, setWebhookTestResult] = useState(null)
+
   // Privacy & Support Modals State
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isDocModalOpen, setIsDocModalOpen] = useState(false)
@@ -606,6 +610,29 @@ function BulkBuyerSettings({ userName, userRole }) {
     }
   }
 
+  const handleTestBulkBuyerWebhook = async () => {
+    if (!companyProfile.webhookUrl || !companyProfile.webhookUrl.trim()) {
+      setWebhookTestResult({ success: false, message: 'Please enter a valid Webhook URL first.' })
+      setTimeout(() => setWebhookTestResult(null), 5000)
+      return
+    }
+    setTestingWebhook(true)
+    setWebhookTestResult(null)
+    try {
+      const res = await api.post('/bulk-buyer/webhook/test', { webhookUrl: companyProfile.webhookUrl.trim() })
+      setWebhookTestResult(res.data)
+      setTimeout(() => setWebhookTestResult(null), 7000)
+    } catch (err) {
+      setWebhookTestResult({
+        success: false,
+        message: err.response?.data?.message || 'Failed to send test webhook ping.'
+      })
+      setTimeout(() => setWebhookTestResult(null), 7000)
+    } finally {
+      setTestingWebhook(false)
+    }
+  }
+
   const [prefSaving, setPrefSaving] = useState(false)
   const [prefSavedMsg, setPrefSavedMsg] = useState('')
 
@@ -873,17 +900,58 @@ function BulkBuyerSettings({ userName, userRole }) {
               </div>
               
               <div className="mt-8 border-t border-slate-100 dark:border-slate-800 pt-6">
-                <h3 className="font-bold text-slate-900 dark:text-white mb-2">API Webhooks</h3>
-                <p className="text-[10px] text-slate-500 mb-4">Set a webhook URL to receive real-time POST events when licenses are activated or revoked.</p>
-                <div className="grid grid-cols-[120px_1fr] gap-y-4 text-xs items-center">
-                  <div className="font-bold text-slate-500">Webhook URL</div>
-                  <input 
-                    type="url" 
-                    placeholder="https://your-server.com/webhook"
-                    value={companyProfile.webhookUrl || ''} 
-                    onChange={(e) => setCompanyProfile({...companyProfile, webhookUrl: e.target.value})}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1.5 text-slate-900 dark:text-white"
-                  />
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center space-x-2">
+                    <h3 className="font-bold text-slate-900 dark:text-white">API Webhooks</h3>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                      companyProfile.webhookUrl?.trim()
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700'
+                    }`}>
+                      {companyProfile.webhookUrl?.trim() ? 'Configured' : 'Unconfigured'}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-500 mb-4">Set a webhook URL to receive real-time HTTP POST events when licenses are allocated, activated by employees, or revoked.</p>
+                
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <input 
+                      type="url" 
+                      placeholder="https://your-server.com/webhook or https://hooks.slack.com/..."
+                      value={companyProfile.webhookUrl || ''} 
+                      onChange={(e) => setCompanyProfile({...companyProfile, webhookUrl: e.target.value})}
+                      className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs font-mono text-slate-900 dark:text-white outline-none focus:border-indigo-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleTestBulkBuyerWebhook}
+                      disabled={testingWebhook || !companyProfile.webhookUrl?.trim()}
+                      className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-lg transition-colors border border-slate-200 dark:border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-1.5 shrink-0"
+                    >
+                      {testingWebhook && (
+                        <div className="w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                      )}
+                      <span>{testingWebhook ? 'Testing...' : 'Test Webhook'}</span>
+                    </button>
+                  </div>
+
+                  {webhookTestResult && (
+                    <div className={`p-2.5 text-xs font-semibold rounded-lg flex items-center space-x-2 border animate-in fade-in duration-300 ${
+                      webhookTestResult.success 
+                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
+                        : 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
+                    }`}>
+                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {webhookTestResult.success ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                        )}
+                      </svg>
+                      <span>{webhookTestResult.message}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

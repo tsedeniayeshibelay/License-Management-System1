@@ -116,4 +116,12 @@ public class EmailUtil {
                 .replace("{maskedKey}", maskedKey)
                 .replace("{reason}", reason != null && !reason.isBlank() ? reason : "Unknown validation failure");
     }
+
+    public String buildPasswordResetEmail(String customerName, String resetCode, String resetUrl) {
+        String template = loadTemplate("email-password-reset.html");
+        return template
+                .replace("{customerName}", customerName != null ? customerName : "Valued User")
+                .replace("{resetCode}", resetCode)
+                .replace("{resetUrl}", resetUrl);
+    }
 }

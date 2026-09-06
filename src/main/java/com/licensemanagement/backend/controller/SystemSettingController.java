@@ -15,6 +15,7 @@ import java.util.Map;
 public class SystemSettingController {
 
     private final SystemSettingService systemSettingService;
+    private final com.licensemanagement.backend.service.WebhookService webhookService;
 
     @GetMapping("/settings")
     @PreAuthorize("hasRole('ADMIN')")
@@ -27,6 +28,15 @@ public class SystemSettingController {
     public ResponseEntity<SystemSetting> updateSettings(@RequestBody SystemSetting request) {
         SystemSetting updated = systemSettingService.updateSettings(request);
         return ResponseEntity.ok(updated);
+    }
+
+    @PostMapping("/settings/test-webhook")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<com.licensemanagement.backend.dto.WebhookTestResult> testWebhook(@RequestBody(required = false) Map<String, String> body) {
+        String url = (body != null && body.get("webhookUrl") != null && !body.get("webhookUrl").isBlank())
+                ? body.get("webhookUrl")
+                : systemSettingService.getSettings().getWebhookUrl();
+        return ResponseEntity.ok(webhookService.testWebhook(url));
     }
 
     @GetMapping("/public-config")

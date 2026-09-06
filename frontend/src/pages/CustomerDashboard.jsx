@@ -874,19 +874,6 @@ function CustomerDashboard({ user, stats, licenses, devices }) {
                           </button>
                         )}
 
-                        {/* Direct Invoice Download button for owned licenses */}
-                        {orderMapByLicenseId[license.id] && (
-                          <button 
-                            onClick={() => handleDownloadInvoice(orderMapByLicenseId[license.id])}
-                            disabled={downloadingInvoiceId === orderMapByLicenseId[license.id].id}
-                            className={`inline-flex items-center ${btnPad} bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/40 border border-violet-200 dark:border-violet-800 font-bold rounded-lg transition-colors cursor-pointer shadow-sm`}
-                            title="Download official tax invoice for this license"
-                          >
-                            <svg className="w-3.5 h-3.5 mr-1 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                            Invoice
-                          </button>
-                        )}
-
                         {/* Activate / Details modal button */}
                         <button 
                           onClick={() => { setSelectedLicense(license); setShowLicenseModal(true); }}

@@ -2,7 +2,7 @@ package com.licensemanagement.backend.controller;
 import com.licensemanagement.backend.dto.AuthResponse;
 import com.licensemanagement.backend.dto.LoginRequest;
 import com.licensemanagement.backend.dto.RegisterRequest;
-import com.licensemanagement.backend.dto.UpdateProfileRequest;
+import com.licensemanagement.backend.dto.ResetPasswordRequest;
 import com.licensemanagement.backend.entity.User;
 import com.licensemanagement.backend.service.AuthService;
 import com.licensemanagement.backend.service.UserService;
@@ -102,18 +102,28 @@ public class AuthController {
         }
     }
     @PostMapping("/forgot-password")
-    public ResponseEntity<Map<String, String>> forgotPassword(@RequestParam String email) {
-        authService.forgotPassword(email);
+    public ResponseEntity<Map<String, String>> forgotPassword(
+            @RequestParam(required = false) String email,
+            @RequestBody(required = false) Map<String, String> body) {
+        String targetEmail = (email != null && !email.isBlank()) ? email : (body != null ? body.get("email") : null);
+        if (targetEmail != null && !targetEmail.isBlank()) {
+            authService.forgotPassword(targetEmail.trim());
+        }
         Map<String, String> response = new HashMap<>();
-        response.put("message", "Password reset link sent to your email!");
+        response.put("message", "If an account is registered with that email, a reset code and link have been sent.");
         return ResponseEntity.ok(response);
     }
+
     @PostMapping("/reset-password")
-    public ResponseEntity<Map<String, String>> resetPassword(@RequestParam String token,
-                                                             @Valid @RequestBody UpdateProfileRequest request) {
-        authService.resetPassword(token, request.getNewPassword(), request.getConfirmPassword());
+    public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(
+                request.getToken(),
+                request.getCode(),
+                request.getNewPassword(),
+                request.getConfirmPassword()
+        );
         Map<String, String> response = new HashMap<>();
-        response.put("message", "Password reset successfully!");
+        response.put("message", "Password reset successfully! You can now sign in with your new password.");
         return ResponseEntity.ok(response);
     }
     @PostMapping("/refresh")

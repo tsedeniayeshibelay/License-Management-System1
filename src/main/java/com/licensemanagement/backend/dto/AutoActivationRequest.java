@@ -6,8 +6,8 @@ import lombok.Data;
 
 @Data
 public class AutoActivationRequest {
-    @NotNull(message = "Product ID is required")
-    private Long productId;
+    @NotBlank(message = "Product ID is required")
+    private String productId;
     
     @NotBlank(message = "Device name is required")
     private String deviceName;

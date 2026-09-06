@@ -89,6 +89,9 @@ public class SystemSettingService {
         if (request.getDebugLogging() != null) {
             existing.setDebugLogging(request.getDebugLogging());
         }
+        if (request.getWebhookUrl() != null) {
+            existing.setWebhookUrl(request.getWebhookUrl().trim());
+        }
         existing.setUpdatedAt(LocalDateTime.now());
 
         SystemSetting saved = systemSettingRepository.save(existing);

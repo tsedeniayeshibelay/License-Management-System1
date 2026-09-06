@@ -39,11 +39,25 @@ function Login() {
     password: '',
     twoFactorCode: ''
   })
+  const [unlocked, setUnlocked] = useState(false)
   const [step, setStep] = useState(1)
   const [error, setError] = useState('')
   const [inactivityNotice, setInactivityNotice] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+
+  // Reset form credentials on mount to prevent browser password managers from auto-populating
+  useEffect(() => {
+    setFormData({
+      email: '',
+      password: '',
+      twoFactorCode: ''
+    })
+    const timer = setTimeout(() => {
+      setUnlocked(true)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [])
 
   // check if redirected due to inactivity
   useEffect(() => {
@@ -146,14 +160,30 @@ function Login() {
           </div>
         )}
 
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-6" onSubmit={handleSubmit} autoComplete="off">
+          {/* Invisible decoy inputs to absorb browser password manager auto-fill */}
+          <div style={{ position: 'absolute', opacity: 0, height: 0, width: 0, overflow: 'hidden', zIndex: -1 }}>
+            <input type="text" name="fake_email_autofill_trap" tabIndex="-1" autoComplete="off" />
+            <input type="password" name="fake_password_autofill_trap" tabIndex="-1" autoComplete="off" />
+          </div>
+
           {step === 1 ? (
             <>
               <div className="space-y-1.5 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-100">
                 <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">Email Address</label>
                 <div className="relative">
                   <IconUser />
-                  <input name="email" type="email" required placeholder="you@company.com" value={formData.email} onChange={handleChange}
+                  <input 
+                    name="email" 
+                    type="email" 
+                    required 
+                    placeholder="you@company.com" 
+                    value={formData.email} 
+                    onChange={handleChange}
+                    autoComplete="off"
+                    readOnly={!unlocked}
+                    onFocus={() => setUnlocked(true)}
+                    onClick={() => setUnlocked(true)}
                     className="w-full pl-10 pr-4 py-3.5 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white shadow-sm dark:shadow-none" />
                 </div>
               </div>
@@ -165,7 +195,17 @@ function Login() {
                 </div>
                 <div className="relative">
                   <IconLock />
-                  <input name="password" type="password" required placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" value={formData.password} onChange={handleChange}
+                  <input 
+                    name="password" 
+                    type="password" 
+                    required 
+                    placeholder="••••••••" 
+                    value={formData.password} 
+                    onChange={handleChange}
+                    autoComplete="new-password"
+                    readOnly={!unlocked}
+                    onFocus={() => setUnlocked(true)}
+                    onClick={() => setUnlocked(true)}
                     className="w-full pl-10 pr-4 py-3.5 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600 text-slate-900 dark:text-white tracking-widest shadow-sm dark:shadow-none" />
                 </div>
               </div>

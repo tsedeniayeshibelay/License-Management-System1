@@ -18,7 +18,7 @@
   <a href="#-key-features"><img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 18" /></a>
   <a href="#-key-features"><img src="https://img.shields.io/badge/Vite-5-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" /></a>
   <a href="#-key-features"><img src="https://img.shields.io/badge/PostgreSQL-15+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" /></a>
-  <a href="#-key-features"><img src="https://img.shields.io/badge/Flyway-Migrations%20(V1--V20)-CC0202?style=for-the-badge&logo=flyway&logoColor=white" alt="Flyway" /></a>
+  <a href="#-key-features"><img src="https://img.shields.io/badge/Flyway-Migrations%20(V1--V22)-CC0202?style=for-the-badge&logo=flyway&logoColor=white" alt="Flyway" /></a>
   <a href="#-key-features"><img src="https://img.shields.io/badge/Security-JWT%20%2B%20RSA%20%2B%20HMAC-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white" alt="Security" /></a>
   <a href="#-license"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License" /></a>
 </p>
@@ -250,6 +250,8 @@ Database schema versioning is managed strictly via **Flyway**, ensuring continuo
 | `V18__add_support_tickets_table.sql` | 2.7 | Integrated customer support ticketing, categorization, and message threads. |
 | `V19__add_system_settings.sql` | 2.8 | Dynamic key-value system setting table for runtime maintenance mode toggling. |
 | `V20__add_assignment_type_to_license_assignments.sql` | 2.9 | Assignment classification attributes (`SEAT`, `FLOATING`, `RESERVED`). |
+| `V21__add_webhook_url_to_system_settings.sql` | 3.0 | Global webhook URL support in system settings for administrative alerts. |
+| `V22__add_code_to_password_reset_tokens.sql` | 3.1 | 6-digit numeric verification code support for password reset workflows. |
 
 ---
 

@@ -103,12 +103,32 @@ public class LicenseController {
                 
         License createdLicense = licenseService.createLicense(request);
         
-        // Create Order
-        BigDecimal amount = product.getPrice() != null ? BigDecimal.valueOf(product.getPrice()).multiply(new BigDecimal(quantity)) : BigDecimal.ZERO;
+        // Create Order with accurate role-aware pricing
+        BigDecimal unitPrice = BigDecimal.ZERO;
+        if ("BULK_BUYER".equals(currentUser.getRole())) {
+            if (product.getBulkBuyerPrice() != null && product.getBulkBuyerPrice().compareTo(BigDecimal.ZERO) > 0) {
+                unitPrice = product.getBulkBuyerPrice();
+            } else if (product.getCustomerPrice() != null && product.getCustomerPrice().compareTo(BigDecimal.ZERO) > 0) {
+                unitPrice = product.getCustomerPrice();
+            } else if (product.getPrice() != null) {
+                unitPrice = BigDecimal.valueOf(product.getPrice());
+            }
+        } else {
+            // CUSTOMER or other buyer roles
+            if (product.getCustomerPrice() != null && product.getCustomerPrice().compareTo(BigDecimal.ZERO) > 0) {
+                unitPrice = product.getCustomerPrice();
+            } else if (product.getPrice() != null && product.getPrice() > 0) {
+                unitPrice = BigDecimal.valueOf(product.getPrice());
+            } else if (product.getBulkBuyerPrice() != null && product.getBulkBuyerPrice().compareTo(BigDecimal.ZERO) > 0) {
+                unitPrice = product.getBulkBuyerPrice();
+            }
+        }
+
+        BigDecimal amount = unitPrice.multiply(BigDecimal.valueOf(quantity)).setScale(2, java.math.RoundingMode.HALF_UP);
         
         Order order = Order.builder()
             .userId(currentUser.getId())
-            .companyId(currentUser.getCompanyId())
+            .companyId(currentUser.getCompanyId() != null ? currentUser.getCompanyId() : product.getCompanyId())
             .productId(productId)
             .licenseId(createdLicense.getId())
             .quantity(quantity)
@@ -120,13 +140,14 @@ public class LicenseController {
         orderRepository.save(order);
 
         try {
+            String redirectUrl = "CUSTOMER".equals(currentUser.getRole()) ? "/dashboard" : "/bulk-buyer/licenses";
             notificationService.sendNotification(
                 currentUser,
                 "purchases",
                 "PURCHASE_SUCCESS",
                 "Purchase Successful",
                 "Successfully purchased " + quantity + " license seat(s) for " + product.getName() + " (" + order.getOrderNumber() + ").",
-                "/bulk-buyer/licenses",
+                redirectUrl,
                 null
             );
         } catch (Exception e) {
@@ -443,12 +464,22 @@ public class LicenseController {
             Product product = productRepository.findById(license.getProductId()).orElse(null);
             BigDecimal unitPrice = BigDecimal.ZERO;
             if (product != null) {
-                if (currentUser.getRole().equals("BULK_BUYER") && product.getBulkBuyerPrice() != null) {
-                    unitPrice = product.getBulkBuyerPrice();
-                } else if (product.getCustomerPrice() != null) {
-                    unitPrice = product.getCustomerPrice();
-                } else if (product.getPrice() != null) {
-                    unitPrice = BigDecimal.valueOf(product.getPrice());
+                if ("BULK_BUYER".equals(currentUser.getRole())) {
+                    if (product.getBulkBuyerPrice() != null && product.getBulkBuyerPrice().compareTo(BigDecimal.ZERO) > 0) {
+                        unitPrice = product.getBulkBuyerPrice();
+                    } else if (product.getCustomerPrice() != null && product.getCustomerPrice().compareTo(BigDecimal.ZERO) > 0) {
+                        unitPrice = product.getCustomerPrice();
+                    } else if (product.getPrice() != null) {
+                        unitPrice = BigDecimal.valueOf(product.getPrice());
+                    }
+                } else {
+                    if (product.getCustomerPrice() != null && product.getCustomerPrice().compareTo(BigDecimal.ZERO) > 0) {
+                        unitPrice = product.getCustomerPrice();
+                    } else if (product.getPrice() != null && product.getPrice() > 0) {
+                        unitPrice = BigDecimal.valueOf(product.getPrice());
+                    } else if (product.getBulkBuyerPrice() != null && product.getBulkBuyerPrice().compareTo(BigDecimal.ZERO) > 0) {
+                        unitPrice = product.getBulkBuyerPrice();
+                    }
                 }
             }
 

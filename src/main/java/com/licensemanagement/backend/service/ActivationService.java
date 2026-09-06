@@ -72,6 +72,7 @@ public class ActivationService {
     private final WebhookService webhookService;
     private final CacheManager cacheManager;
     private final ProductRepository productRepository;
+    private final ProductService productService;
     private final PendingQRActivationRepository pendingQRActivationRepository;
     private final OfflineRequestLogRepository offlineRequestLogRepository;
     private final UsageLogRepository usageLogRepository;
@@ -469,12 +470,26 @@ public class ActivationService {
             throw new ForbiddenException("Only customers and bulk buyers can activate licenses");
         }
 
+        Product product = productService.resolveProduct(request.getProductId());
+        if (product == null) {
+            throw new ResourceNotFoundException("This software is not registered with LockStrata.");
+        }
+        if (!"PUBLISHED".equalsIgnoreCase(product.getStatus())) {
+            throw new BusinessValidationException("This software product is not currently active.");
+        }
+        if ("CUSTOMER".equals(currentUser.getRole()) && !Boolean.TRUE.equals(product.getAvailableToCustomers())) {
+            throw new ForbiddenException("This product is not available to individual customers.");
+        }
+        if ("BULK_BUYER".equals(currentUser.getRole()) && !Boolean.TRUE.equals(product.getAvailableToBulkBuyers())) {
+            throw new ForbiddenException("This product is not available to bulk buyers.");
+        }
+
         List<License> userLicenses = licenseRepository.findByUserId(currentUser.getId());
         License targetLicense = null;
         
-        // Filter by Product ID and find an available license owned by user
+        // Filter by resolved Product ID and find an available license owned by user
         for (License license : userLicenses) {
-            if (!license.getProductId().equals(request.getProductId())) {
+            if (!license.getProductId().equals(product.getId())) {
                 continue;
             }
             if ("ACTIVE".equals(license.getStatus()) || "NOT_ACTIVATED".equals(license.getStatus())) {
@@ -509,7 +524,7 @@ public class ActivationService {
                 if (!"ACTIVE".equals(assignment.getStatus())) continue;
                 
                 License license = assignment.getLicense();
-                if (!license.getProductId().equals(request.getProductId())) continue;
+                if (!license.getProductId().equals(product.getId())) continue;
                 
                 if ("ACTIVE".equals(license.getStatus()) || "NOT_ACTIVATED".equals(license.getStatus())) {
                     if (license.getLicenseType() == LicenseType.OPEN_SOURCE || 
@@ -537,7 +552,7 @@ public class ActivationService {
         }
 
         if (targetLicense == null) {
-            throw new ResourceNotFoundException("No available active licenses found for your account.");
+            throw new ResourceNotFoundException("No eligible license was found for this software. Please purchase or obtain a license before activating.");
         }
 
         try {
@@ -616,12 +631,17 @@ public class ActivationService {
         License license = licenseRepository.findById(activation.getLicenseId())
                 .orElseThrow(() -> new ResourceNotFoundException("License not found"));
         
+        Product product = license.getProductId() != null ? productRepository.findById(license.getProductId()).orElse(null) : null;
+        String canonicalProductId = (product != null && product.getProductIdSku() != null && !product.getProductIdSku().isBlank())
+                ? product.getProductIdSku()
+                : String.valueOf(license.getProductId());
+
         try {
             OfflineActivationPayload payload = OfflineActivationPayload.builder()
                     .licenseKey(license.getLicenseKey())
                     .deviceFingerprint(deviceRepository.findById(activation.getDeviceId()).get().getMachineId())
                     .expiryDate(license.getExpiryDate().toString())
-                    .productId(String.valueOf(license.getProductId()))
+                    .productId(canonicalProductId)
                     .companyId(String.valueOf(license.getCompanyId()))
                     .licenseType(license.getLicenseType().name())
                     .issuedAt(System.currentTimeMillis())
@@ -660,8 +680,13 @@ public class ActivationService {
 
     @Transactional
     public QRRequestResponse requestQRActivation(QRRequestDto request) {
-        Product product = productRepository.findById(request.getProductId())
-                .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+        Product product = productService.resolveProduct(request.getProductId());
+        if (product == null) {
+            throw new ResourceNotFoundException("This software is not registered with LockStrata.");
+        }
+        if (!"PUBLISHED".equalsIgnoreCase(product.getStatus())) {
+            throw new BusinessValidationException("This software product is not currently active.");
+        }
 
         String requestId = UUID.randomUUID().toString();
         String publicToken = UUID.randomUUID().toString();
@@ -841,6 +866,14 @@ public class ActivationService {
                 throw new BusinessValidationException("Offline request has expired.");
             }
 
+            Product product = productService.resolveProduct(request.getProductId());
+            if (product == null) {
+                throw new ResourceNotFoundException("This software is not registered with LockStrata.");
+            }
+            if (!"PUBLISHED".equalsIgnoreCase(product.getStatus())) {
+                throw new BusinessValidationException("This software product is not currently active.");
+            }
+
             User currentUser = currentUserProvider.getCurrentUser();
             License license = licenseRepository.findById(licenseId)
                     .orElseThrow(() -> new ResourceNotFoundException("License not found"));
@@ -850,7 +883,7 @@ public class ActivationService {
             if (!isOwner && !hasAssignment && !"ADMIN".equals(currentUser.getRole())) {
                 throw new ForbiddenException("You can only use your own licenses.");
             }
-            if (!license.getProductId().equals(request.getProductId())) {
+            if (!license.getProductId().equals(product.getId())) {
                 throw new BusinessValidationException("Selected license is not compatible with this product.");
             }
 
@@ -918,6 +951,11 @@ public class ActivationService {
         License license = licenseRepository.findById(activation.getLicenseId())
                 .orElseThrow(() -> new ResourceNotFoundException("License not found"));
         
+        Product product = license.getProductId() != null ? productRepository.findById(license.getProductId()).orElse(null) : null;
+        String canonicalProductId = (product != null && product.getProductIdSku() != null && !product.getProductIdSku().isBlank())
+                ? product.getProductIdSku()
+                : String.valueOf(license.getProductId());
+
         try {
             OfflineActivationPayload payload = OfflineActivationPayload.builder()
                     .licenseKey(license.getLicenseKey())
@@ -929,7 +967,7 @@ public class ActivationService {
                     .activationStatus("ACTIVE")
                     .activationId(activation.getId())
                     .expiryDate(license.getExpiryDate() != null ? license.getExpiryDate().toString() : "PERPETUAL")
-                    .productId(String.valueOf(license.getProductId()))
+                    .productId(canonicalProductId)
                     .companyId(String.valueOf(license.getCompanyId()))
                     .licenseType(license.getLicenseType().name())
                     .issuedAt(System.currentTimeMillis())

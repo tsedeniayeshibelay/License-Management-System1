@@ -24,6 +24,13 @@ export default function CompanySettings({ userName, userRole, theme, setTheme, a
   const [successMsg, setSuccessMsg] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
 
+  // Vendor Webhook State
+  const [webhookUrl, setWebhookUrl] = useState('')
+  const [savingWebhook, setSavingWebhook] = useState(false)
+  const [testingWebhook, setTestingWebhook] = useState(false)
+  const [webhookMsg, setWebhookMsg] = useState({ type: '', text: '' })
+  const [webhookTestResult, setWebhookTestResult] = useState(null)
+
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -82,12 +89,59 @@ export default function CompanySettings({ userName, userRole, theme, setTheme, a
           twoFactorEnabled: res.data.twoFactorEnabled || false,
           rawPreferences: prefs
         })
+
+        try {
+          const compRes = await api.get('/companies/my-company')
+          if (compRes.data && compRes.data.webhookUrl) {
+            setWebhookUrl(compRes.data.webhookUrl)
+          }
+        } catch (compErr) {
+          console.warn('Could not fetch company webhook', compErr)
+        }
       } catch (err) {
         console.error('Failed to fetch profile', err)
       }
     }
     fetchProfile()
   }, [])
+
+  const handleSaveWebhook = async () => {
+    setSavingWebhook(true)
+    setWebhookMsg({ type: '', text: '' })
+    try {
+      await api.put('/companies/my-company/webhook', { webhookUrl: webhookUrl.trim() })
+      setWebhookMsg({ type: 'success', text: 'Vendor webhook URL saved successfully.' })
+      setTimeout(() => setWebhookMsg({ type: '', text: '' }), 4000)
+    } catch (err) {
+      setWebhookMsg({ type: 'error', text: err.response?.data?.message || 'Failed to save webhook URL.' })
+      setTimeout(() => setWebhookMsg({ type: '', text: '' }), 4000)
+    } finally {
+      setSavingWebhook(false)
+    }
+  }
+
+  const handleTestVendorWebhook = async () => {
+    if (!webhookUrl || !webhookUrl.trim()) {
+      setWebhookTestResult({ success: false, message: 'Please enter a valid Webhook URL first.' })
+      setTimeout(() => setWebhookTestResult(null), 5000)
+      return
+    }
+    setTestingWebhook(true)
+    setWebhookTestResult(null)
+    try {
+      const res = await api.post('/companies/my-company/webhook/test', { webhookUrl: webhookUrl.trim() })
+      setWebhookTestResult(res.data)
+      setTimeout(() => setWebhookTestResult(null), 7000)
+    } catch (err) {
+      setWebhookTestResult({
+        success: false,
+        message: err.response?.data?.message || 'Failed to send test webhook ping.'
+      })
+      setTimeout(() => setWebhookTestResult(null), 7000)
+    } finally {
+      setTestingWebhook(false)
+    }
+  }
   
   useEffect(() => {
     if (successMsg || errorMsg) {
@@ -342,6 +396,7 @@ export default function CompanySettings({ userName, userRole, theme, setTheme, a
     { id: 'general', label: 'General', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z' },
     { id: 'productPrefs', label: 'Product Preferences', icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4' },
     { id: 'licensing', label: 'Licensing', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
+    { id: 'webhooks', label: 'API Webhooks', icon: 'M13 10V3L4 14h7v7l9-11h-7z' },
     { id: 'notifications', label: 'Notifications', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9' },
     { id: 'security', label: 'Security', icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z' },
     { id: 'appearance', label: 'Appearance', icon: 'M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01' },
@@ -968,6 +1023,121 @@ export default function CompanySettings({ userName, userRole, theme, setTheme, a
                     </button>
                   </div>
 
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'webhooks' && (
+              <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm p-8 space-y-8 animate-in fade-in duration-300">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-3">
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white">Vendor API Webhooks</h3>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        webhookUrl?.trim()
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700'
+                      }`}>
+                        {webhookUrl?.trim() ? 'Configured & Active' : 'Unconfigured'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Receive automated real-time HTTP POST notifications when licenses are generated, activated by customers, or when security anomalies occur on your software products.
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                      Webhook Endpoint URL
+                    </label>
+                    <div className="flex gap-3">
+                      <input 
+                        type="url" 
+                        placeholder="https://your-api.com/webhooks/lockstrata or https://hooks.slack.com/..."
+                        value={webhookUrl} 
+                        onChange={(e) => setWebhookUrl(e.target.value)}
+                        className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-4 py-2.5 text-xs font-mono text-slate-900 dark:text-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleTestVendorWebhook}
+                        disabled={testingWebhook || !webhookUrl?.trim()}
+                        className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold text-xs rounded-lg transition-colors border border-slate-200 dark:border-slate-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 shrink-0"
+                      >
+                        {testingWebhook && (
+                          <div className="w-3.5 h-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+                        )}
+                        <span>{testingWebhook ? 'Pinging...' : 'Test Webhook'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {webhookTestResult && (
+                    <div className={`p-3 text-xs font-semibold rounded-lg flex items-center space-x-2 border animate-in fade-in duration-300 ${
+                      webhookTestResult.success 
+                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
+                        : 'bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400'
+                    }`}>
+                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        {webhookTestResult.success ? (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+                        ) : (
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                        )}
+                      </svg>
+                      <span>{webhookTestResult.message}</span>
+                    </div>
+                  )}
+
+                  {webhookMsg.text && (
+                    <div className={`p-3 text-xs font-semibold rounded-lg ${
+                      webhookMsg.type === 'success' 
+                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' 
+                        : 'bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20'
+                    }`}>
+                      {webhookMsg.text}
+                    </div>
+                  )}
+
+                  <div className="pt-2 flex justify-start">
+                    <button
+                      type="button"
+                      onClick={handleSaveWebhook}
+                      disabled={savingWebhook}
+                      className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg shadow-sm transition-colors disabled:opacity-50 flex items-center space-x-2"
+                    >
+                      {savingWebhook && (
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      )}
+                      <span>{savingWebhook ? 'Saving...' : 'Save Webhook URL'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+                  <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-3">
+                    Dispatched Vendor Events
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-100 dark:border-slate-800">
+                      <div className="font-bold font-mono text-indigo-600 dark:text-indigo-400 mb-1">LICENSE_CREATED</div>
+                      <p className="text-slate-500 dark:text-slate-400">Triggered whenever a retail customer or bulk buyer purchases or generates a license key for your software products.</p>
+                    </div>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-100 dark:border-slate-800">
+                      <div className="font-bold font-mono text-indigo-600 dark:text-indigo-400 mb-1">LICENSE_ACTIVATED</div>
+                      <p className="text-slate-500 dark:text-slate-400">Triggered when an authorized device completes machine fingerprint verification and activates a seat.</p>
+                    </div>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-100 dark:border-slate-800">
+                      <div className="font-bold font-mono text-indigo-600 dark:text-indigo-400 mb-1">ANOMALY_ALERT</div>
+                      <p className="text-slate-500 dark:text-slate-400">Triggered when suspicious multi-IP activity, rapid device activation spikes, or impossible travel is detected on your software.</p>
+                    </div>
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-100 dark:border-slate-800">
+                      <div className="font-bold font-mono text-indigo-600 dark:text-indigo-400 mb-1">UNBIND_REQUEST</div>
+                      <p className="text-slate-500 dark:text-slate-400">Triggered when an end-user submits a hardware unbind request to free up a seat for a new machine.</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

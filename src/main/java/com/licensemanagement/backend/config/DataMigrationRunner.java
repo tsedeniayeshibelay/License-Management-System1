@@ -70,6 +70,9 @@ public class DataMigrationRunner implements CommandLineRunner {
             userRepository.delete(extra);
         }
 
+        // Ensure canonical demo products exist with proper SKUs
+        seedCanonicalProducts();
+
         // 1. Backfill products
         for (com.licensemanagement.backend.entity.Product product : productRepository.findAll()) {
             if (product.getCompanyId() != null) {
@@ -165,5 +168,41 @@ public class DataMigrationRunner implements CommandLineRunner {
             }
         }
         log.info("Backfilled {} historical activations.", count);
+    }
+
+    private void seedCanonicalProducts() {
+        Long companyId = productRepository.findAll().stream()
+                .map(com.licensemanagement.backend.entity.Product::getCompanyId)
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .orElse(1L);
+
+        seedProductIfMissing("NX-ACC-001", "Nexora Accounting", "2.4.1", "Enterprise Financial and Accounting Suite", companyId);
+        seedProductIfMissing("NX-INV-002", "Nexora Inventory", "1.5.0", "Enterprise Warehouse and Inventory System", companyId);
+        seedProductIfMissing("NX-PAY-003", "Nexora Payroll", "1.2.0", "Automated Payroll Management System", companyId);
+        seedProductIfMissing("CS-AUTO-01", "CloudSync Auto", "2.1.0", "Automated Cloud Storage Synchronization Client", companyId);
+    }
+
+    private void seedProductIfMissing(String sku, String name, String version, String desc, Long companyId) {
+        if (productRepository.findByProductIdSkuIgnoreCase(sku).isEmpty()) {
+            com.licensemanagement.backend.entity.Product prod = productRepository.findByName(name)
+                    .orElse(new com.licensemanagement.backend.entity.Product());
+            prod.setName(name);
+            prod.setProductIdSku(sku);
+            prod.setVersion(version);
+            prod.setDescription(desc);
+            prod.setStatus("PUBLISHED");
+            prod.setLicenseType("SUBSCRIPTION");
+            prod.setPrice(199.0);
+            prod.setCustomerPrice(new java.math.BigDecimal("199.00"));
+            prod.setBulkBuyerPrice(new java.math.BigDecimal("149.00"));
+            prod.setMinBulkQuantity(1);
+            prod.setAvailableToCustomers(true);
+            prod.setAvailableToBulkBuyers(true);
+            prod.setMaxActivations(5);
+            prod.setCompanyId(companyId);
+            productRepository.save(prod);
+            log.info("Seeded canonical product: {} [{}]", name, sku);
+        }
     }
 }

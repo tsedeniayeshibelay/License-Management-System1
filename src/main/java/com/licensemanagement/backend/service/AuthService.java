@@ -7,11 +7,13 @@ import com.licensemanagement.backend.entity.PasswordResetToken;
 import com.licensemanagement.backend.repository.UserRepository;
 import com.licensemanagement.backend.repository.PasswordResetTokenRepository;
 import com.licensemanagement.backend.service.EmailService;
+import com.licensemanagement.backend.util.EmailUtil;
 import com.licensemanagement.backend.util.JwtUtil;
 import com.licensemanagement.backend.util.PasswordValidator;
 import com.warrenstrange.googleauth.GoogleAuthenticator;
 import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,12 +32,16 @@ public class AuthService {
     private final PasswordResetTokenRepository tokenRepository;
     private final KnownDeviceRepository knownDeviceRepository;
     private final EmailService emailService;
+    private final EmailUtil emailUtil;
     private final NotificationService notificationService;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final PasswordValidator passwordValidator;
     private final List<String> blacklist = new ArrayList<>();
     private final GoogleAuthenticator gAuth = new GoogleAuthenticator();
+
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
 
     public AuthResponse login(LoginRequest request) {
         return login(request, null);
@@ -197,39 +203,58 @@ public class AuthService {
 
         return browser + " on " + os;
     }
+    @Transactional
     public void forgotPassword(String email) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + email));
-        
+        // Silently succeed even if email not found (security best practice - no enumeration)
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) return;
+
+        // Delete any existing tokens for this user to prevent multiple valid tokens
+        tokenRepository.deleteByUser(user);
+
+        // Generate a secure UUID token (for direct link) and a 6-digit code (for manual entry)
         String resetToken = UUID.randomUUID().toString();
+        String resetCode = String.format("%06d", new Random().nextInt(999999));
+
         PasswordResetToken tokenEntity = new PasswordResetToken();
         tokenEntity.setToken(resetToken);
+        tokenEntity.setCode(resetCode);
         tokenEntity.setUser(user);
-        tokenEntity.setExpiryDate(java.time.LocalDateTime.now().plusHours(1)); // 1 hour expiry
-        
+        tokenEntity.setExpiryDate(LocalDateTime.now().plusMinutes(15)); // 15-minute expiry
+
         tokenRepository.save(tokenEntity);
-        
-        // Use proper URL based on where the frontend is hosted
-        String resetUrl = "http://localhost:5173/reset-password?token=" + resetToken;
-        
-        System.out.println("Reset link: " + resetUrl);
-        
-        String emailBody = "Hello " + user.getFullName() + ",\n\n"
-                         + "To reset your password, please click the link below:\n"
-                         + resetUrl + "\n\n"
-                         + "If you did not request this, please ignore this email.";
-                         
-        emailService.sendEmail(user.getEmail(), "Password Reset Request - LockStrata", emailBody, true);
+
+        // Build full reset URL pointing to the correct frontend port
+        String resetUrl = frontendUrl + "/reset-password?token=" + resetToken;
+
+        System.out.println("[Password Reset] Code: " + resetCode + " | Link: " + resetUrl);
+
+        String subject = "Reset Your Password - LockStrata";
+        String htmlContent = emailUtil.buildPasswordResetEmail(user.getFullName(), resetCode, resetUrl);
+        emailService.sendEmail(user.getEmail(), subject, htmlContent, true);
     }
-    public void resetPassword(String token, String newPassword, String confirmPassword) {
-        PasswordResetToken tokenEntity = tokenRepository.findByToken(token)
-                .orElseThrow(() -> new UnauthorizedException("Invalid or expired reset token!"));
-                
+
+    @Transactional
+    public void resetPassword(String token, String code, String newPassword, String confirmPassword) {
+        PasswordResetToken tokenEntity;
+
+        if (token != null && !token.isBlank()) {
+            // Link-based reset (from email button)
+            tokenEntity = tokenRepository.findByToken(token)
+                    .orElseThrow(() -> new UnauthorizedException("Invalid or expired reset link. Please request a new one."));
+        } else if (code != null && !code.isBlank()) {
+            // Code-based reset (manual 6-digit code entry)
+            tokenEntity = tokenRepository.findByCode(code)
+                    .orElseThrow(() -> new UnauthorizedException("Invalid verification code. Please check and try again."));
+        } else {
+            throw new BusinessValidationException("A reset token or verification code is required.");
+        }
+
         if (tokenEntity.isExpired()) {
             tokenRepository.delete(tokenEntity);
-            throw new UnauthorizedException("Reset token has expired!");
+            throw new UnauthorizedException("This reset link/code has expired. Please request a new password reset.");
         }
-        
+
         String passwordError = passwordValidator.validatePassword(newPassword);
         if (passwordError != null) {
             throw new BusinessValidationException(passwordError);
@@ -240,7 +265,7 @@ public class AuthService {
         User user = tokenEntity.getUser();
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
-        
+
         tokenRepository.delete(tokenEntity);
     }
     public AuthResponse refreshToken(String oldToken) {

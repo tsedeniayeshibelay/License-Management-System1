@@ -6,8 +6,8 @@ import lombok.Data;
 
 @Data
 public class QRRequestDto {
-    @NotNull(message = "Product ID is required")
-    private Long productId;
+    @NotBlank(message = "Product ID is required")
+    private String productId;
     
     @NotBlank(message = "Machine ID is required")
     private String machineId;

@@ -94,4 +94,26 @@ public class ProductService {
             productRepository.delete(product);
         }
     }
+
+    public Product resolveProduct(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return null;
+        }
+        String trimmed = identifier.trim();
+        // 1. Check by Canonical Product SKU (e.g., NX-ACC-001, CS-AUTO-01)
+        java.util.Optional<Product> productOpt = productRepository.findByProductIdSkuIgnoreCase(trimmed);
+        if (productOpt.isPresent()) {
+            return productOpt.get();
+        }
+        // 2. Check by Legacy Numeric Product ID for backward compatibility
+        try {
+            Long numericId = Long.parseLong(trimmed);
+            productOpt = productRepository.findById(numericId);
+            if (productOpt.isPresent()) {
+                return productOpt.get();
+            }
+        } catch (NumberFormatException ignored) {}
+        // Do NOT resolve products by name during activation per requirement
+        return null;
+    }
 }
