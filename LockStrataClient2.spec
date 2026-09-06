@@ -5,7 +5,7 @@ a = Analysis(
     ['desktop_app2.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('product_config2.json', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

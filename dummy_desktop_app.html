@@ -159,6 +159,14 @@
 <script>
     const baseUrl = 'http://localhost:8080/api';
     
+    const urlParams = new URLSearchParams(window.location.search);
+    const configuredProductId = urlParams.get('productId') || 'CS-AUTO-01';
+
+    // Update UI title if custom product passed
+    if (urlParams.get('productName')) {
+        document.querySelector('.title-bar').innerText = '📦 ' + urlParams.get('productName') + ' Setup (' + configuredProductId + ')';
+    }
+
     // Generate a random hardware ID for this "computer"
     const hwId = 'HW-' + Math.random().toString(36).substring(2, 10).toUpperCase();
 
@@ -194,7 +202,7 @@
 
             btn.innerText = 'Activating License...';
 
-            // Step 2: Request auto-activation
+            // Step 2: Request auto-activation with canonical Product ID
             const actRes = await fetch(`${baseUrl}/activations/auto`, {
                 method: 'POST',
                 headers: { 
@@ -202,7 +210,7 @@
                     'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    productId: 16, // CloudSync Auto ID
+                    productId: configuredProductId,
                     machineId: hwId,
                     deviceName: 'My Personal Desktop'
                 })

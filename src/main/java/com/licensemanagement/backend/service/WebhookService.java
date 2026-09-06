@@ -117,8 +117,8 @@ public class WebhookService {
 
         try {
             WebhookPayload payload = new WebhookPayload(
-                    "TEST_PING",
-                    "🔔 LockStrata Webhook Test: Successfully connected to your webhook endpoint!"
+                    "WEBHOOK_VERIFICATION",
+                    "🔔 LockStrata Webhook: Successfully connected to your webhook endpoint!"
             );
             payload.setTimestamp(LocalDateTime.now().toString());
 
@@ -134,18 +134,18 @@ public class WebhookService {
                     .success(isSuccess)
                     .statusCode(response.getStatusCode().value())
                     .message(isSuccess
-                            ? "Webhook test ping delivered successfully! (HTTP " + response.getStatusCode().value() + ")"
+                            ? "Webhook verification delivered successfully! (HTTP " + response.getStatusCode().value() + ")"
                             : "Server responded with HTTP " + response.getStatusCode().value())
                     .build();
         } catch (HttpStatusCodeException httpEx) {
-            log.warn("Webhook test ping returned HTTP error: {} for URL: {}", httpEx.getStatusCode(), targetUrl);
+            log.warn("Webhook verification returned HTTP error: {} for URL: {}", httpEx.getStatusCode(), targetUrl);
             return WebhookTestResult.builder()
                     .success(false)
                     .statusCode(httpEx.getStatusCode().value())
                     .message("Target server rejected webhook with HTTP " + httpEx.getStatusCode().value() + ": " + httpEx.getStatusText())
                     .build();
         } catch (Exception e) {
-            log.warn("Webhook test failed for URL {}: {}", targetUrl, e.getMessage());
+            log.warn("Webhook verification failed for URL {}: {}", targetUrl, e.getMessage());
             return WebhookTestResult.builder()
                     .success(false)
                     .statusCode(500)

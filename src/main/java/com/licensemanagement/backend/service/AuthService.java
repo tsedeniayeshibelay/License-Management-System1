@@ -205,9 +205,8 @@ public class AuthService {
     }
     @Transactional
     public void forgotPassword(String email) {
-        // Silently succeed even if email not found (security best practice - no enumeration)
-        User user = userRepository.findByEmail(email).orElse(null);
-        if (user == null) return;
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new com.licensemanagement.backend.exception.ResourceNotFoundException("User not found with email: " + email));
 
         // Delete any existing tokens for this user to prevent multiple valid tokens
         tokenRepository.deleteByUser(user);

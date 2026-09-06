@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import api from '../services/api'
 
 export default function EmployeeDashboard({ user, licenses = [], devices = [], onRefresh }) {
-  const [unbindRequests, setUnbindRequests] = useState([])
   const [showActivationModal, setShowActivationModal] = useState(false)
   const [selectedLicense, setSelectedLicense] = useState(null)
   const [downloadingPid, setDownloadingPid] = useState(null)
@@ -82,19 +81,6 @@ export default function EmployeeDashboard({ user, licenses = [], devices = [], o
 
   const companyName = user?.companyEntity?.name || user?.company || 'Your Organization'
 
-  useEffect(() => {
-    fetchUnbindRequests()
-  }, [])
-
-  const fetchUnbindRequests = async () => {
-    try {
-      const res = await api.get('/unbind-requests/my-requests')
-      setUnbindRequests(Array.isArray(res.data) ? res.data : [])
-    } catch (err) {
-      console.error('Failed to fetch unbind requests', err)
-    }
-  }
-
   const handleDownload = async (productId) => {
     try {
       setDownloadingPid(productId)
@@ -108,14 +94,47 @@ export default function EmployeeDashboard({ user, licenses = [], devices = [], o
       if (rel.distributionMethod === 'EXTERNAL') {
         window.open(rel.downloadUrl, '_blank')
       } else {
-        const fileRes = await api.get(`/releases/${rel.id}/download`, { responseType: 'blob' })
-        const url = window.URL.createObjectURL(new Blob([fileRes.data]))
-        const link = document.createElement('a')
-        link.href = url
-        link.setAttribute('download', rel.originalFilename || 'software-installer.exe')
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
+        const fileRes = await api.get(`/releases/${rel.id}/download?bundle=true`, { responseType: 'blob' })
+        const rawData = fileRes.data instanceof Blob ? fileRes.data : new Blob([fileRes.data]);
+
+        let isRealZip = false;
+        try {
+          const slice = await rawData.slice(0, 4).arrayBuffer();
+          const view = new Uint8Array(slice);
+          if (view[0] === 0x50 && view[1] === 0x4B) {
+            isRealZip = true;
+          }
+        } catch (e) {
+          isRealZip = false;
+        }
+
+        let filename = 'software-package.zip';
+        const disposition = fileRes.headers?.['content-disposition'];
+        if (disposition) {
+          const match = disposition.match(/filename="?([^";]+)"?/);
+          if (match && match[1]) filename = match[1];
+        }
+
+        if (isRealZip) {
+          if (!filename.toLowerCase().endsWith('.zip')) {
+            filename = (rel.originalFilename ? rel.originalFilename.replace(/\.[^/.]+$/, "") : 'software-package') + '-setup.zip';
+          }
+        } else {
+          filename = rel.originalFilename || 'LockStrataClient.exe';
+          if (filename.toLowerCase().endsWith('.zip')) {
+            filename = filename.replace(/\.zip$/i, ".exe");
+          }
+        }
+
+        const blob = new Blob([rawData], { type: isRealZip ? 'application/zip' : 'application/octet-stream' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
       }
 
       setDownloadedProducts(prev => {
@@ -129,30 +148,6 @@ export default function EmployeeDashboard({ user, licenses = [], devices = [], o
       alert("Could not download software: " + (err.response?.data?.message || err.message))
     } finally {
       setDownloadingPid(null)
-    }
-  }
-
-  const handleRequestUnbind = async (device) => {
-    const list = Array.isArray(unbindRequests) ? unbindRequests : []
-    const isPending = list.some(r => (r?.deviceId == device?.id || r?.device?.id == device?.id) && r?.status === 'PENDING')
-    if (isPending) {
-      alert("An unbind request for this device is already pending admin review.")
-      return
-    }
-
-    const reason = window.prompt(`Request to unbind device "${device.deviceName || 'Hardware'}"?\nPlease provide a reason (e.g. replaced PC, motherboard upgrade):`)
-    if (!reason) return
-
-    try {
-      await api.post(`/devices/${device.id}/unbind`, {
-        reason: reason,
-        licenseId: device.licenseId || null
-      })
-      alert("✅ Unbind request submitted to your IT administrator.")
-      fetchUnbindRequests()
-      if (onRefresh) onRefresh()
-    } catch (err) {
-      alert("Failed to submit unbind request: " + (err.response?.data?.message || err.message))
     }
   }
 
@@ -406,7 +401,7 @@ export default function EmployeeDashboard({ user, licenses = [], devices = [], o
                 <th className={thPad}>Operating System</th>
                 <th className={thPad}>Machine Fingerprint</th>
                 <th className={thPad}>Last Active</th>
-                <th className={`${thPad} pr-6 text-right`}>Actions</th>
+                <th className={`${thPad} pr-6 text-right`}>Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -433,14 +428,10 @@ export default function EmployeeDashboard({ user, licenses = [], devices = [], o
                       {dev.lastSeen ? new Date(dev.lastSeen).toLocaleString() : 'Recently'}
                     </td>
                     <td className={`${tdPad} pr-6 text-right`}>
-                      <div className={`inline-flex items-center justify-end ${actionContainerClass}`}>
-                        <button
-                          onClick={() => handleRequestUnbind(dev)}
-                          className={`inline-flex items-center ${btnPad} font-bold text-red-600 hover:text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800/50 transition-colors cursor-pointer`}
-                        >
-                          Request Device Change
-                        </button>
-                      </div>
+                      <span className={`inline-flex items-center ${badgePad} rounded-full font-bold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5"></span>
+                        Active Device
+                      </span>
                     </td>
                   </tr>
                 ))

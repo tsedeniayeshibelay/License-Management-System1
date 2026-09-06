@@ -264,15 +264,19 @@ function Dashboard() {
                     <span className="text-sm">Activated Devices</span>
                   </button>
 
-                  <button onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); setTimeout(() => document.getElementById('unbind-requests')?.scrollIntoView({behavior: 'smooth'}), 100); }} className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
-                    <span className="text-sm">Unbind Requests</span>
-                  </button>
+                  {!isEmployee && (
+                    <>
+                      <button onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); setTimeout(() => document.getElementById('unbind-requests')?.scrollIntoView({behavior: 'smooth'}), 100); }} className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                        <span className="text-sm">Unbind Requests</span>
+                      </button>
 
-                  <button onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); window.dispatchEvent(new CustomEvent('customer-tab-change', { detail: 'orders' })); setTimeout(() => document.getElementById('orders-invoices')?.scrollIntoView({behavior: 'smooth'}), 100); }} className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    <span className="text-sm">Orders & Invoices</span>
-                  </button>
+                      <button onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); window.dispatchEvent(new CustomEvent('customer-tab-change', { detail: 'orders' })); setTimeout(() => document.getElementById('orders-invoices')?.scrollIntoView({behavior: 'smooth'}), 100); }} className="w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200 border border-transparent">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span className="text-sm">Orders & Invoices</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
 

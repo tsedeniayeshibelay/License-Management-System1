@@ -185,7 +185,9 @@ public class DataMigrationRunner implements CommandLineRunner {
 
     private void seedProductIfMissing(String sku, String name, String version, String desc, Long companyId) {
         if (productRepository.findByProductIdSkuIgnoreCase(sku).isEmpty()) {
-            com.licensemanagement.backend.entity.Product prod = productRepository.findByName(name)
+            com.licensemanagement.backend.entity.Product prod = productRepository.findAll().stream()
+                    .filter(p -> name.equalsIgnoreCase(p.getName()) && (p.getProductIdSku() == null || p.getProductIdSku().isBlank()))
+                    .findFirst()
                     .orElse(new com.licensemanagement.backend.entity.Product());
             prod.setName(name);
             prod.setProductIdSku(sku);

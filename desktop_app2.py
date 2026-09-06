@@ -9,6 +9,9 @@ import uuid
 import time
 import threading
 import argparse
+import re
+import glob
+import zipfile
 from tkinter import filedialog, messagebox
 from io import BytesIO
 
@@ -35,9 +38,9 @@ PUBLIC_KEY_B64 = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoGz+KjiawXeJDO2I1i
 
 API_BASE_URL = os.getenv("LOCKSTRATA_API_URL", "http://localhost:8080/api")
 
-# Optional package/build-time constant (defaults to Nexora Inventory for LockStrataClient2)
-BUILD_PRODUCT_ID = "NX-INV-002"
-BUILD_PRODUCT_NAME = "Nexora Inventory"
+# Optional package/build-time constant (None by default - requires configuration)
+BUILD_PRODUCT_ID = None
+BUILD_PRODUCT_NAME = None
 
 def mask_license_key(key):
     """Safely mask license key for display."""
@@ -103,24 +106,56 @@ class DesktopApp(ctk.CTk):
             if cli_config_path:
                 candidates.append(cli_config_path)
             if getattr(sys, 'frozen', False):
+                candidates.append(os.path.join(os.path.dirname(sys.executable), "product_config2.json"))
                 candidates.append(os.path.join(os.path.dirname(sys.executable), "product_config.json"))
+            candidates.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "product_config2.json"))
             candidates.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "product_config.json"))
+            candidates.append(os.path.join(os.getcwd(), "product_config2.json"))
             candidates.append(os.path.join(os.getcwd(), "product_config.json"))
             if hasattr(sys, '_MEIPASS'):
+                candidates.append(os.path.join(sys._MEIPASS, "product_config2.json"))
                 candidates.append(os.path.join(sys._MEIPASS, "product_config.json"))
 
-            for config_file in candidates:
-                if os.path.exists(config_file):
+            # If user ran .exe directly from inside Windows zip preview without extracting:
+            exe_dir = os.path.dirname(sys.executable) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__))
+            folder_name = os.path.basename(exe_dir)
+            match = re.search(r'_(.+?\.zip)\.', folder_name, re.IGNORECASE)
+            if match:
+                zip_name = match.group(1)
+                temp_parent = os.path.dirname(exe_dir)
+                for sibling in glob.glob(os.path.join(temp_parent, f"*_{zip_name}.*")):
+                    candidates.append(os.path.join(sibling, "product_config2.json"))
+                    candidates.append(os.path.join(sibling, "product_config.json"))
+                
+                # Check user's Downloads directory for the zip file itself
+                downloads_zip = os.path.join(os.path.expanduser('~'), 'Downloads', zip_name)
+                if os.path.exists(downloads_zip):
                     try:
-                        with open(config_file, "r", encoding="utf-8") as f:
-                            data = json.load(f)
-                            cfg_pid = data.get("productId")
-                            if cfg_pid and str(cfg_pid).strip():
-                                self.product_id = str(cfg_pid).strip()
-                                self.product_name = data.get("productName", f"Product {self.product_id}")
-                                break
+                        with zipfile.ZipFile(downloads_zip, 'r') as z:
+                            for target in ['product_config2.json', 'product_config.json']:
+                                if target in z.namelist():
+                                    zip_cfg = json.loads(z.read(target).decode('utf-8'))
+                                    cfg_pid = zip_cfg.get("productId")
+                                    if cfg_pid and str(cfg_pid).strip():
+                                        self.product_id = str(cfg_pid).strip()
+                                        self.product_name = zip_cfg.get("productName", f"Product {self.product_id}")
+                                        break
                     except Exception as e:
-                        print(f"Warning: Failed to read {config_file}: {e}")
+                        print(f"Warning: Failed reading zip in Downloads: {e}")
+
+            if not self.product_id:
+                for config_file in candidates:
+                    if os.path.exists(config_file):
+                        try:
+                            with open(config_file, "r", encoding="utf-8") as f:
+                                data = json.load(f)
+                                cfg_pid = data.get("productId")
+                                if cfg_pid and str(cfg_pid).strip():
+                                    self.product_id = str(cfg_pid).strip()
+                                    self.product_name = data.get("productName", f"Product {self.product_id}")
+                                    break
+                        except Exception as e:
+                            print(f"Warning: Failed to read {config_file}: {e}")
 
         # 4. Build-time constant fallback
         if not self.product_id and BUILD_PRODUCT_ID:
@@ -130,8 +165,7 @@ class DesktopApp(ctk.CTk):
     def show_unconfigured_banner(self):
         messagebox.showerror(
             "Configuration Error",
-            "This software is not properly configured with a LockStrata Product ID.\n\n"
-            "Please reinstall this software from your LockStrata portal or provide a valid product configuration."
+            "This software is not configured with a valid LockStrata Product ID."
         )
 
     def load_or_create_identity(self):
@@ -279,8 +313,8 @@ class DesktopApp(ctk.CTk):
         else:
             ctk.CTkLabel(
                 header,
-                text="⚠️ This software is not properly configured with a LockStrata Product ID.",
-                font=ctk.CTkFont(size=13, weight="bold"),
+                text="⚠️ This software is not configured with a valid LockStrata Product ID.",
+                font=ctk.CTkFont(size=14, weight="bold"),
                 text_color="#f87171"
             ).pack(side="left", padx=20, pady=10)
 
@@ -314,7 +348,7 @@ class DesktopApp(ctk.CTk):
         ctk.CTkLabel(tab, text="Log in with your LockStrata account to activate this software instantly.", text_color="gray").pack(pady=(0, 20))
 
         if not self.product_id:
-            ctk.CTkLabel(tab, text="Activation unavailable: No Product ID configured for this application build.", text_color="#f87171").pack(pady=20)
+            ctk.CTkLabel(tab, text="This software is not configured with a valid LockStrata Product ID.", font=ctk.CTkFont(size=14, weight="bold"), text_color="#f87171").pack(pady=30)
             return
 
         self.email_entry = ctk.CTkEntry(tab, placeholder_text="Account Email", width=340, height=40)
@@ -433,7 +467,7 @@ class DesktopApp(ctk.CTk):
         ctk.CTkLabel(self.qr_tab, text="Scan with your phone or any authorized device to approve activation.", text_color="gray").pack(pady=(0, 10))
 
         if not self.product_id:
-            ctk.CTkLabel(self.qr_tab, text="QR Activation unavailable: No Product ID configured.", text_color="#f87171").pack(pady=20)
+            ctk.CTkLabel(self.qr_tab, text="This software is not configured with a valid LockStrata Product ID.", font=ctk.CTkFont(size=14, weight="bold"), text_color="#f87171").pack(pady=30)
             return
 
         self.qr_image_label = ctk.CTkLabel(self.qr_tab, text="")
@@ -529,7 +563,7 @@ class DesktopApp(ctk.CTk):
         ctk.CTkLabel(tab, text="Generate an activation request file, upload to LockStrata portal, then import license.", text_color="gray").pack(pady=(0, 20))
 
         if not self.product_id:
-            ctk.CTkLabel(tab, text="Offline Activation unavailable: No Product ID configured.", text_color="#f87171").pack(pady=20)
+            ctk.CTkLabel(tab, text="This software is not configured with a valid LockStrata Product ID.", font=ctk.CTkFont(size=14, weight="bold"), text_color="#f87171").pack(pady=30)
             return
 
         ctk.CTkButton(

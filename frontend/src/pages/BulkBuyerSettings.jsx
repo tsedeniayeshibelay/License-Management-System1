@@ -625,7 +625,7 @@ function BulkBuyerSettings({ userName, userRole }) {
     } catch (err) {
       setWebhookTestResult({
         success: false,
-        message: err.response?.data?.message || 'Failed to send test webhook ping.'
+        message: err.response?.data?.message || 'Failed to send webhook verification.'
       })
       setTimeout(() => setWebhookTestResult(null), 7000)
     } finally {
@@ -932,7 +932,7 @@ function BulkBuyerSettings({ userName, userRole }) {
                       {testingWebhook && (
                         <div className="w-3 h-3 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
                       )}
-                      <span>{testingWebhook ? 'Testing...' : 'Test Webhook'}</span>
+                      <span>{testingWebhook ? 'Verifying...' : 'Verify Webhook'}</span>
                     </button>
                   </div>
 

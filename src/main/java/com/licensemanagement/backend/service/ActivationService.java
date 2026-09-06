@@ -180,13 +180,13 @@ public class ActivationService {
                 log.error("Failed to generate QR Code: {}", e.getMessage());
             }
             
-            webhookService.sendCompanyAlert(license.getCompanyId(), 
-                "✅ **License Activated**\nLicense Key: `" + NotificationService.maskLicenseKey(license.getLicenseKey()) + "`\nDevice: `" + device.getDeviceName() + "`");
-                
             String productName = "Software Product";
             if (license.getProductId() != null) {
                 productName = productRepository.findById(license.getProductId()).map(Product::getName).orElse("Software Product");
             }
+
+            webhookService.sendCompanyAlert(license.getCompanyId(), 
+                "✅ **License Activated**\nProduct Name: `" + productName + "`\nDevice: `" + device.getDeviceName() + "`");
             if (activityLogService != null && license.getCompanyId() != null) {
                 activityLogService.logAction(
                     license.getCompanyId(),
@@ -474,14 +474,22 @@ public class ActivationService {
         if (product == null) {
             throw new ResourceNotFoundException("This software is not registered with LockStrata.");
         }
-        if (!"PUBLISHED".equalsIgnoreCase(product.getStatus())) {
+        if (!"PUBLISHED".equalsIgnoreCase(product.getStatus()) && !"ACTIVE".equalsIgnoreCase(product.getStatus())) {
             throw new BusinessValidationException("This software product is not currently active.");
         }
-        if ("CUSTOMER".equals(currentUser.getRole()) && !Boolean.TRUE.equals(product.getAvailableToCustomers())) {
-            throw new ForbiddenException("This product is not available to individual customers.");
-        }
-        if ("BULK_BUYER".equals(currentUser.getRole()) && !Boolean.TRUE.equals(product.getAvailableToBulkBuyers())) {
-            throw new ForbiddenException("This product is not available to bulk buyers.");
+        
+        boolean hasAssignment = licenseAssignmentRepository.findByUserId(currentUser.getId()).stream()
+                .anyMatch(a -> "ACTIVE".equals(a.getStatus()) && (
+                    (a.getLicense() != null && product.getId().equals(a.getLicense().getProductId())) ||
+                    (a.getLicenseId() != null && licenseRepository.findById(a.getLicenseId()).map(License::getProductId).filter(product.getId()::equals).isPresent())
+                ));
+        if (!hasAssignment) {
+            if ("CUSTOMER".equals(currentUser.getRole()) && Boolean.FALSE.equals(product.getAvailableToCustomers())) {
+                throw new ForbiddenException("This product is not available to individual customers.");
+            }
+            if ("BULK_BUYER".equals(currentUser.getRole()) && Boolean.FALSE.equals(product.getAvailableToBulkBuyers())) {
+                throw new ForbiddenException("This product is not available to bulk buyers.");
+            }
         }
 
         List<License> userLicenses = licenseRepository.findByUserId(currentUser.getId());
@@ -524,7 +532,10 @@ public class ActivationService {
                 if (!"ACTIVE".equals(assignment.getStatus())) continue;
                 
                 License license = assignment.getLicense();
-                if (!license.getProductId().equals(product.getId())) continue;
+                if (license == null && assignment.getLicenseId() != null) {
+                    license = licenseRepository.findById(assignment.getLicenseId()).orElse(null);
+                }
+                if (license == null || !license.getProductId().equals(product.getId())) continue;
                 
                 if ("ACTIVE".equals(license.getStatus()) || "NOT_ACTIVATED".equals(license.getStatus())) {
                     if (license.getLicenseType() == LicenseType.OPEN_SOURCE || 
@@ -585,8 +596,15 @@ public class ActivationService {
             targetLicense.setStatus("ACTIVE");
             licenseRepository.save(targetLicense);
             
+            String autoActivatedProductName = "Software Product";
+            if (targetLicense.getProductId() != null) {
+                autoActivatedProductName = productRepository.findById(targetLicense.getProductId())
+                        .map(Product::getName)
+                        .orElse("Software Product");
+            }
+
             webhookService.sendCompanyAlert(targetLicense.getCompanyId(), 
-                "✅ **License Auto-Activated**\nLicense Key: `" + targetLicense.getLicenseKey() + "`\nDevice: `" + device.getDeviceName() + "`");
+                "✅ **License Auto-Activated**\nProduct Name: `" + autoActivatedProductName + "`\nDevice: `" + device.getDeviceName() + "`");
 
             Activation activation = new Activation();
             activation.setLicenseId(targetLicense.getId());
@@ -604,6 +622,23 @@ public class ActivationService {
             usageLog.setIpAddress(ipAddress);
             usageLogRepository.save(usageLog);
             
+            try {
+                String maskedKey = NotificationService.maskLicenseKey(targetLicense.getLicenseKey());
+                final String finalProductName = product != null ? product.getName() : "Software Product";
+                final License finalLicense = targetLicense;
+                notificationService.sendNotification(
+                        currentUser,
+                        "activation",
+                        "LICENSE_ACTIVATION",
+                        "License Activated",
+                        "Your license for " + finalProductName + " (" + maskedKey + ") was successfully activated on " + device.getDeviceName() + ".",
+                        "/licenses",
+                        () -> emailService.sendActivationEmail(currentUser, finalLicense, finalProductName)
+                );
+            } catch (Exception notifEx) {
+                log.error("Failed to dispatch auto-activation notification: {}", notifEx.getMessage());
+            }
+
             String reqId = UUID.randomUUID().toString();
             return buildOfflineResponseWithInfo(savedActivation, request.getInstallationId(), reqId);
         } catch (Exception e) {
@@ -684,7 +719,7 @@ public class ActivationService {
         if (product == null) {
             throw new ResourceNotFoundException("This software is not registered with LockStrata.");
         }
-        if (!"PUBLISHED".equalsIgnoreCase(product.getStatus())) {
+        if (!"PUBLISHED".equalsIgnoreCase(product.getStatus()) && !"ACTIVE".equalsIgnoreCase(product.getStatus())) {
             throw new BusinessValidationException("This software product is not currently active.");
         }
 
@@ -824,6 +859,24 @@ public class ActivationService {
         pending.setActivationId(savedActivation.getId());
         pending.setApprovedAt(LocalDateTime.now());
         pendingQRActivationRepository.save(pending);
+
+        try {
+            String maskedKey = NotificationService.maskLicenseKey(license.getLicenseKey());
+            Product product = productRepository.findById(license.getProductId()).orElse(null);
+            final String finalProductName = product != null ? product.getName() : "Software Product";
+            final License finalLicense = license;
+            notificationService.sendNotification(
+                    currentUser,
+                    "activation",
+                    "LICENSE_ACTIVATION",
+                    "License Activated",
+                    "Your license for " + finalProductName + " (" + maskedKey + ") was successfully activated on " + device.getDeviceName() + " via QR code.",
+                    "/licenses",
+                    () -> emailService.sendActivationEmail(currentUser, finalLicense, finalProductName)
+            );
+        } catch (Exception notifEx) {
+            log.error("Failed to dispatch QR activation notification: {}", notifEx.getMessage());
+        }
     }
 
     public QRPollResponse pollQRActivation(String requestId, String pollingSecret) {
@@ -870,7 +923,7 @@ public class ActivationService {
             if (product == null) {
                 throw new ResourceNotFoundException("This software is not registered with LockStrata.");
             }
-            if (!"PUBLISHED".equalsIgnoreCase(product.getStatus())) {
+            if (!"PUBLISHED".equalsIgnoreCase(product.getStatus()) && !"ACTIVE".equalsIgnoreCase(product.getStatus())) {
                 throw new BusinessValidationException("This software product is not currently active.");
             }
 
@@ -933,9 +986,26 @@ public class ActivationService {
             usageLog.setIpAddress(null);
             usageLogRepository.save(usageLog);
             
-            OfflineRequestLog log = new OfflineRequestLog();
-            log.setRequestDigest(digest);
-            offlineRequestLogRepository.save(log);
+            OfflineRequestLog reqLog = new OfflineRequestLog();
+            reqLog.setRequestDigest(digest);
+            offlineRequestLogRepository.save(reqLog);
+
+            try {
+                String maskedKey = NotificationService.maskLicenseKey(license.getLicenseKey());
+                final String finalProductName = product != null ? product.getName() : "Software Product";
+                final License finalLicense = license;
+                notificationService.sendNotification(
+                        currentUser,
+                        "activation",
+                        "LICENSE_ACTIVATION",
+                        "License Activated",
+                        "Your license for " + finalProductName + " (" + maskedKey + ") was successfully activated on " + device.getDeviceName() + " via offline file.",
+                        "/licenses",
+                        () -> emailService.sendActivationEmail(currentUser, finalLicense, finalProductName)
+                );
+            } catch (Exception notifEx) {
+                log.error("Failed to dispatch offline activation notification: {}", notifEx.getMessage());
+            }
 
             OfflineActivationResponse response = buildOfflineResponseWithInfo(savedActivation, request.getInstallationId(), request.getRequestId());
             return objectMapper.writeValueAsBytes(response);

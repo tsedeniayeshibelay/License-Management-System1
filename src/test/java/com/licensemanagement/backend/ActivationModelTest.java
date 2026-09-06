@@ -74,6 +74,9 @@ public class ActivationModelTest {
         
         testProduct = new Product();
         testProduct.setName("Model Product");
+        testProduct.setProductIdSku("TEST-SKU-MDL");
+        testProduct.setStatus("PUBLISHED");
+        testProduct.setAvailableToCustomers(true);
         testProduct.setCompanyId(company.getId());
         testProduct.setLicenseType(LicenseType.PER_DEVICE.name());
         testProduct = productRepository.save(testProduct);

@@ -38,20 +38,34 @@ public class SoftwareReleaseController {
     }
 
     @GetMapping("/{id}/download")
-    public ResponseEntity<Resource> downloadRelease(@PathVariable Long id) {
-        // Validate authorization before returning the file resource
-        // (A fully robust system would verify the user holds a license for this product)
+    public ResponseEntity<Resource> downloadRelease(
+            @PathVariable Long id,
+            @RequestParam(name = "bundle", defaultValue = "true") boolean bundle) {
         User currentUser = currentUserProvider.getCurrentUser();
         if (currentUser == null) {
             throw new ForbiddenException("Must be logged in to download.");
         }
 
-        Resource resource = softwareReleaseService.getReleaseResource(id);
+        SoftwareReleaseService.BundledRelease bundled = softwareReleaseService.getBundledRelease(id, bundle);
         
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + resource.getFilename() + "\"")
-                .body(resource);
+        long len = -1;
+        try {
+            len = bundled.resource().contentLength();
+        } catch (Exception ignored) {}
+
+        var response = ResponseEntity.ok()
+                .contentType(bundled.filename().endsWith(".zip") ? MediaType.parseMediaType("application/zip") : MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + bundled.filename() + "\"");
+        
+        if (len > 0) {
+            response.contentLength(len);
+        }
+        return response.body(bundled.resource());
+    }
+
+    @GetMapping("/{id}/config")
+    public ResponseEntity<java.util.Map<String, String>> getReleaseConfig(@PathVariable Long id) {
+        return ResponseEntity.ok(softwareReleaseService.getProductConfigForRelease(id));
     }
 
     @GetMapping("/product/{productId}/latest")

@@ -13,6 +13,10 @@ public class ProductService {
     private final LicenseRepository licenseRepository;
     public Product createProduct(Product product) {
         Product saved = productRepository.save(product);
+        if (saved.getProductIdSku() == null || saved.getProductIdSku().isBlank()) {
+            saved.setProductIdSku("LS-PRODUCT-" + saved.getId());
+            saved = productRepository.save(saved);
+        }
         if (saved.getCompanyId() != null) {
             activityLogService.logAction(saved.getCompanyId(), "PRODUCT_REGISTERED", "Registered product: " + saved.getName() + " (" + saved.getVersion() + ")", null, null);
         }
@@ -45,7 +49,10 @@ public class ProductService {
         product.setDescription(productDetails.getDescription());
         product.setLicenseType(productDetails.getLicenseType());
         product.setPrice(productDetails.getPrice());
-        product.setProductIdSku(productDetails.getProductIdSku());
+        String newSku = (productDetails.getProductIdSku() != null && !productDetails.getProductIdSku().isBlank())
+                ? productDetails.getProductIdSku().trim()
+                : (product.getProductIdSku() != null && !product.getProductIdSku().isBlank() ? product.getProductIdSku() : "LS-PRODUCT-" + id);
+        product.setProductIdSku(newSku);
         product.setCategory(productDetails.getCategory());
         product.setPublisher(productDetails.getPublisher());
         product.setSupportedOs(productDetails.getSupportedOs());
@@ -115,5 +122,13 @@ public class ProductService {
         } catch (NumberFormatException ignored) {}
         // Do NOT resolve products by name during activation per requirement
         return null;
+    }
+
+    public String getCanonicalProductId(Product product) {
+        if (product == null) return null;
+        if (product.getProductIdSku() != null && !product.getProductIdSku().isBlank()) {
+            return product.getProductIdSku().trim();
+        }
+        return "LS-PRODUCT-" + product.getId();
     }
 }

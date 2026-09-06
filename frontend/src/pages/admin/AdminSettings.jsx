@@ -512,7 +512,7 @@ export default function AdminSettings({ user }) {
     } catch (err) {
       setWebhookTestResult({
         success: false,
-        message: err.response?.data?.message || 'Failed to send test webhook ping.'
+        message: err.response?.data?.message || 'Failed to send webhook verification.'
       });
       setTimeout(() => setWebhookTestResult(null), 7000);
     } finally {
@@ -700,7 +700,7 @@ export default function AdminSettings({ user }) {
                             {testingWebhook && (
                               <div className="w-3.5 h-3.5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
                             )}
-                            <span>{testingWebhook ? 'Pinging...' : 'Test Webhook'}</span>
+                            <span>{testingWebhook ? 'Verifying...' : 'Verify Webhook'}</span>
                           </button>
                         </div>
                       </div>

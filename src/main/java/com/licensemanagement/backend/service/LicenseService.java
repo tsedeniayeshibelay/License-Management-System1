@@ -70,7 +70,7 @@ public class LicenseService {
         License savedLicense = licenseRepository.save(license);
         
         webhookService.sendCompanyAlert(request.getCompanyId(), 
-            "💰 **New License Generated**\nProduct ID: `" + request.getProductId() + "`\nType: `" + request.getLicenseType() + "`");
+            "💰 **New License Generated**\nProduct Name: `" + product.getName() + "`\nType: `" + request.getLicenseType() + "`");
             
         if (savedLicense.getCompanyId() != null) {
             activityLogService.logAction(

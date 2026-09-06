@@ -299,14 +299,48 @@ function CustomerDashboard({ user, stats, licenses, devices }) {
       if (rel.distributionMethod === 'EXTERNAL') {
         window.open(rel.downloadUrl, '_blank')
       } else {
-        const fileRes = await api.get(`/releases/${rel.id}/download`, { responseType: 'blob' })
-        const url = window.URL.createObjectURL(new Blob([fileRes.data]))
-        const link = document.createElement('a')
-        link.href = url
-        link.setAttribute('download', rel.originalFilename || 'software-installer.exe')
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
+        const fileRes = await api.get(`/releases/${rel.id}/download?bundle=true`, { responseType: 'blob' })
+        const rawData = fileRes.data instanceof Blob ? fileRes.data : new Blob([fileRes.data]);
+
+        let isRealZip = false;
+        try {
+          const slice = await rawData.slice(0, 4).arrayBuffer();
+          const view = new Uint8Array(slice);
+          if (view[0] === 0x50 && view[1] === 0x4B) {
+            isRealZip = true;
+          }
+        } catch (e) {
+          isRealZip = false;
+        }
+
+        let filename = 'software-package.zip';
+        const disposition = fileRes.headers?.['content-disposition'];
+        if (disposition) {
+          const match = disposition.match(/filename="?([^";]+)"?/);
+          if (match && match[1]) filename = match[1];
+        }
+
+        if (isRealZip) {
+          if (!filename.toLowerCase().endsWith('.zip')) {
+            filename = (rel.originalFilename ? rel.originalFilename.replace(/\.[^/.]+$/, "") : 'software-package') + '-setup.zip';
+          }
+        } else {
+          // If content is raw executable (MZ), preserve .exe extension rather than fake .zip
+          filename = rel.originalFilename || 'LockStrataClient.exe';
+          if (filename.toLowerCase().endsWith('.zip')) {
+            filename = filename.replace(/\.zip$/i, ".exe");
+          }
+        }
+
+        const blob = new Blob([rawData], { type: isRealZip ? 'application/zip' : 'application/octet-stream' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => window.URL.revokeObjectURL(url), 1000);
       }
 
       setDownloadedProducts(prev => {

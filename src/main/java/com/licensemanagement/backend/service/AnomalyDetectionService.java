@@ -52,7 +52,7 @@ public class AnomalyDetectionService {
                 licenseRepository.save(license);
                 
                 webhookService.sendCompanyAlert(license.getCompanyId(), 
-                    "🚨 **SECURITY ALERT: LICENSE SUSPENDED**\nLicense Key: `" + licenseKey + "`\nReason: Attempted from " + distinctCountries + " distinct countries in 24 hours.");
+                    "🚨 **SECURITY ALERT: LICENSE SUSPENDED**\nLicense: `" + NotificationService.maskLicenseKey(licenseKey) + "`\nReason: Attempted from " + distinctCountries + " distinct countries in 24 hours.");
             }
             
             throw new BusinessValidationException("License suspended due to suspicious activity from multiple countries. Please contact support.");
