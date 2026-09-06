@@ -37,6 +37,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final PasswordValidator passwordValidator;
+    private final org.springframework.cache.CacheManager cacheManager;
     private final List<String> blacklist = new ArrayList<>();
     private final GoogleAuthenticator gAuth = new GoogleAuthenticator();
 
@@ -76,6 +77,13 @@ public class AuthService {
         String token = jwtUtil.generateToken(user.getEmail(), user.getRole());
         AuthResponse response = new AuthResponse(token, user.getEmail(), user.getRole(), "Login successful!");
         response.setMustChangePassword(Boolean.TRUE.equals(user.getMustChangePassword()));
+
+        // Increment login count and evict users cache so subsequent profile calls see updated count
+        user.setLoginCount(user.getLoginCount() != null ? user.getLoginCount() + 1 : 1);
+        userRepository.save(user);
+        if (cacheManager != null && cacheManager.getCache("users") != null) {
+            cacheManager.getCache("users").evict(user.getEmail());
+        }
 
         // Process device recognition and login alert only after complete authentication success
         try {

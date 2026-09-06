@@ -201,7 +201,7 @@ export default function EmployeeDashboard({ user, licenses = [], devices = [], o
               <span>{companyName} • Employee Workspace</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-              Welcome back, {user?.fullName || user?.username || 'Employee'}
+              {user?.loginCount === 1 ? 'Welcome' : 'Welcome back'}, {user?.fullName || user?.username || 'Employee'}
             </h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm">
               Access and download your company-assigned software licenses, manage your registered devices, and activate your workstation.

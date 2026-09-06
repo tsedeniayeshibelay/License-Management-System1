@@ -35,6 +35,13 @@ public class User {
     @Column(name = "must_change_password", nullable = false)
     private Boolean mustChangePassword = false;
 
+    @Column(name = "login_count", nullable = false)
+    private Integer loginCount = 2;
+
+    public Integer getLoginCount() {
+        return loginCount != null ? loginCount : 2;
+    }
+
     
     @Column(name = "two_factor_enabled", nullable = false)
     private Boolean twoFactorEnabled = false;

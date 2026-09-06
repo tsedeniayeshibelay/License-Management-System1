@@ -587,7 +587,7 @@ function CustomerDashboard({ user, stats, licenses, devices }) {
       {/* WELCOME HEADER */}
       <div className="flex flex-col md:flex-row md:items-end justify-between space-y-4 md:space-y-0">
         <div>
-          <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">Good morning, {user.username}</h2>
+          <h2 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">{user?.loginCount === 1 ? 'Welcome' : 'Welcome back'}, {user.username}</h2>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-sm max-w-2xl">
             Manage your software licenses, activations, and devices from one unified enterprise control center.
           </p>

@@ -413,7 +413,7 @@ function BulkBuyerDashboard({ user }) {
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-end gap-6">
         <div>
           <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
-            Good morning, {user.company || user.username} ðŸ‘‹
+            {user?.loginCount === 1 ? 'Welcome' : 'Welcome back'}, {user.company || user.username} 👋
           </h2>
           <p className="text-slate-500 dark:text-slate-400 mt-2 text-lg">Here's what's happening with your licenses today.</p>
         </div>

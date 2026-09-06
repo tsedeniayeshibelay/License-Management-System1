@@ -68,6 +68,7 @@ public class UserService implements UserDetailsService {
         if (user.getRole() == null || user.getRole().isEmpty()) {
             user.setRole("CUSTOMER");
         }
+        user.setLoginCount(0);
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }

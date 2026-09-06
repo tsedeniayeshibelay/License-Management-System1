@@ -320,7 +320,7 @@ export default function AdminLayout({ user }) {
             </button>
             <div>
               <h2 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center">
-                Good morning, {user.username.split(' ')[0]} <span className="ml-2 text-xl">👋</span>
+                {user?.loginCount === 1 ? 'Welcome' : 'Welcome back'}, {user.username.split(' ')[0]} <span className="ml-2 text-xl">👋</span>
               </h2>
               <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 mt-1 hidden sm:block">Here's what's happening across the LockStrata platform today.</p>
             </div>

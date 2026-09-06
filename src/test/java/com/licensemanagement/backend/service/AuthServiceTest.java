@@ -99,4 +99,21 @@ class AuthServiceTest {
 
         assertThrows(ResourceNotFoundException.class, () -> authService.forgotPassword("unknown@example.com"));
     }
+
+    @Test
+    void testLoginIncrementsLoginCount() {
+        LoginRequest request = new LoginRequest();
+        request.setEmail("test@example.com");
+        request.setPassword("password");
+        mockUser.setLoginCount(0);
+        
+        when(userRepository.findByEmail("test@example.com")).thenReturn(Optional.of(mockUser));
+        when(passwordEncoder.matches("password", "encodedPassword")).thenReturn(true);
+        when(jwtUtil.generateToken("test@example.com", "CUSTOMER")).thenReturn("mock-jwt-token");
+
+        authService.login(request);
+
+        assertEquals(1, mockUser.getLoginCount());
+        verify(userRepository).save(mockUser);
+    }
 }
