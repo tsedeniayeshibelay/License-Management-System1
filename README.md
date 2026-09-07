@@ -18,7 +18,7 @@
   <a href="#-key-features"><img src="https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React 18" /></a>
   <a href="#-key-features"><img src="https://img.shields.io/badge/Vite-5-646CFF?style=for-the-badge&logo=vite&logoColor=white" alt="Vite" /></a>
   <a href="#-key-features"><img src="https://img.shields.io/badge/PostgreSQL-15+-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" /></a>
-  <a href="#-key-features"><img src="https://img.shields.io/badge/Flyway-Migrations%20(V1--V22)-CC0202?style=for-the-badge&logo=flyway&logoColor=white" alt="Flyway" /></a>
+  <a href="#-key-features"><img src="https://img.shields.io/badge/Flyway-Migrations%20(V1--V24)-CC0202?style=for-the-badge&logo=flyway&logoColor=white" alt="Flyway" /></a>
   <a href="#-key-features"><img src="https://img.shields.io/badge/Security-JWT%20%2B%20RSA%20%2B%20HMAC-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white" alt="Security" /></a>
   <a href="#-license"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="MIT License" /></a>
 </p>
@@ -114,7 +114,7 @@ graph TB
     end
 
     subgraph Data["Persistence & Caching"]
-        DB[(PostgreSQL 15+<br/>Flyway V1 - V20)]
+        DB[(PostgreSQL 15+<br/>Flyway V1 - V24)]
         CACHE["Caffeine In-Memory Cache<br/>(Users, Licenses)"]
     end
 
@@ -252,6 +252,8 @@ Database schema versioning is managed strictly via **Flyway**, ensuring continuo
 | `V20__add_assignment_type_to_license_assignments.sql` | 2.9 | Assignment classification attributes (`SEAT`, `FLOATING`, `RESERVED`). |
 | `V21__add_webhook_url_to_system_settings.sql` | 3.0 | Global webhook URL support in system settings for administrative alerts. |
 | `V22__add_code_to_password_reset_tokens.sql` | 3.1 | 6-digit numeric verification code support for password reset workflows. |
+| `V23__backfill_product_skus.sql` | 3.2 | Backfill missing product SKU identifiers (`LS-PRODUCT-{id}`). |
+| `V24__add_login_count_to_users.sql` | 3.3 | User login counter tracking for contextual and personalized dashboard greetings. |
 
 ---
 
@@ -332,7 +334,7 @@ Database schema versioning is managed strictly via **Flyway**, ensuring continuo
    ./mvnw clean spring-boot:run
    ```
 
-3. Flyway will automatically execute migrations `V1` through `V20`. The server will bind to:
+3. Flyway will automatically execute migrations `V1` through `V24`. The server will bind to:
    ```text
    http://localhost:8080
    ```
@@ -450,7 +452,7 @@ LockStrata/
 │   │   │   │   └── impl/            # Service Implementations (BulkBuyerServiceImpl, etc.)
 │   │   │   └── util/                # CryptoUtil (RSA), HmacUtil, Base32, QR, LicenseKeyGen
 │   │   └── resources/
-│   │       ├── db/migration/        # Flyway SQL migrations (V1 through V20)
+│   │       ├── db/migration/        # Flyway SQL migrations (V1 through V24)
 │   │       ├── templates/           # Responsive HTML email templates (activations, alerts)
 │   │       ├── static/              # Static test harnesses and API documentation
 │   │       └── application.properties # Parameterized Spring Boot application configuration
