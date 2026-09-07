@@ -16,7 +16,7 @@ export default function CompanySettings({ userName, userRole, theme, setTheme, a
   const [productPrefs, setProductPrefs] = useState({ defaultVisibility: 'Public', defaultStatus: 'Draft' })
   const [licensing, setLicensing] = useState({ defaultType: 'Subscription', defaultDuration: '1 Year', defaultLimit: '1', expirationRules: 'Strict (Instant Deactivation)', renewalPrefs: 'Manual', autoGenerate: false })
   const [notifications, setNotifications] = useState({ expiration: true, activation: true, revocation: true, buyerActivity: false, email: true, browser: true })
-  const [privacy, setPrivacy] = useState({ allowAnalytics: true, publicDirectory: false })
+  const [privacy, setPrivacy] = useState({ publicDirectory: false })
   const [exportingData, setExportingData] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   
@@ -265,7 +265,6 @@ export default function CompanySettings({ userName, userRole, theme, setTheme, a
     }
   }
 
-  const [testingAlert, setTestingAlert] = useState(false)
 
   const handleToggleBrowserNotifications = async () => {
     if (!notifications.browser) {
@@ -299,27 +298,6 @@ export default function CompanySettings({ userName, userRole, theme, setTheme, a
     }
   }
 
-  const handleSendTestAlert = async (eventKey = 'activation') => {
-    setTestingAlert(true)
-    try {
-      const res = await api.post(`/notifications/test?eventKey=${eventKey}`)
-      if (res.data.success) {
-        setSuccessMsg(`Test alert for '${eventKey}' sent! Check notification bell and browser alerts.`)
-        if (notifications.browser && 'Notification' in window && Notification.permission === 'granted') {
-          new Notification(`LockStrata Alert: ${eventKey.toUpperCase()}`, {
-            body: `Test alert for ${eventKey} received. Delivery channel is operating normally.`,
-            icon: '/favicon.ico'
-          })
-        }
-      } else {
-        setErrorMsg(`'${eventKey}' notifications are currently toggled OFF in your preferences.`)
-      }
-    } catch (e) {
-      setErrorMsg("Failed to send test alert.")
-    } finally {
-      setTestingAlert(false)
-    }
-  }
 
   const handleSaveNotifications = async () => {
     try {
@@ -360,9 +338,7 @@ export default function CompanySettings({ userName, userRole, theme, setTheme, a
       })
       setCompanyProfile(prev => ({ ...prev, rawPreferences: currentPrefs }))
       setSuccessMsg(
-        key === 'allowAnalytics'
-          ? (updated.allowAnalytics ? 'Analytics tracking enabled.' : 'Analytics tracking disabled.')
-          : (updated.publicDirectory ? 'Public vendor directory enabled.' : 'Public vendor directory disabled.')
+        updated.publicDirectory ? 'Public vendor directory enabled.' : 'Public vendor directory disabled.'
       )
     } catch (err) {
       console.error('Failed to sync privacy preferences', err)
@@ -759,43 +735,6 @@ export default function CompanySettings({ userName, userRole, theme, setTheme, a
                     </div>
                   </div>
 
-                  {/* Verification & Test Channel */}
-                  <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
-                    <div className="p-4 bg-slate-50 dark:bg-slate-950/50 rounded-xl border border-slate-200 dark:border-slate-800 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">Test Alert Channels</h4>
-                          <p className="text-xs text-slate-500 mt-0.5">Send a test notification to verify your active alert preferences and desktop push delivery.</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-2 pt-1">
-                        <button
-                          type="button"
-                          disabled={testingAlert}
-                          onClick={() => handleSendTestAlert('expiration')}
-                          className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-                        >
-                          Test Expiration Alert
-                        </button>
-                        <button
-                          type="button"
-                          disabled={testingAlert}
-                          onClick={() => handleSendTestAlert('activation')}
-                          className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-                        >
-                          Test Activation Alert
-                        </button>
-                        <button
-                          type="button"
-                          disabled={testingAlert}
-                          onClick={() => handleSendTestAlert('buyerActivity')}
-                          className="px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
-                        >
-                          Test Buyer Activity Alert
-                        </button>
-                      </div>
-                    </div>
-                  </div>
 
                   <div className="pt-4 flex justify-end">
                     <button onClick={handleSaveNotifications} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-6 rounded-lg text-sm transition-colors shadow-md shadow-indigo-600/20">
@@ -963,18 +902,6 @@ export default function CompanySettings({ userName, userRole, theme, setTheme, a
                     <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2">Data Privacy</h3>
                     <p className="text-xs text-slate-500 mb-4">Control how your data is used and shared within the platform.</p>
                     <div className="space-y-4">
-                      <label className="flex items-start space-x-3 cursor-pointer">
-                        <input 
-                          type="checkbox" 
-                          className="mt-1 text-indigo-600 rounded focus:ring-indigo-500 h-4 w-4 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 cursor-pointer" 
-                          checked={privacy.allowAnalytics} 
-                          onChange={() => handleTogglePrivacy('allowAnalytics')}
-                        />
-                        <div>
-                          <p className="text-sm font-medium text-slate-900 dark:text-white">Allow analytics tracking</p>
-                          <p className="text-xs text-slate-500">Help us improve the product by sending anonymous usage data.</p>
-                        </div>
-                      </label>
                       <label className="flex items-start space-x-3 cursor-pointer">
                         <input 
                           type="checkbox" 

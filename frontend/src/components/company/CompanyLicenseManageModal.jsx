@@ -14,7 +14,6 @@ export default function CompanyLicenseManageModal({ license, isOpen, onClose, on
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState(null)
   const [error, setError] = useState(null)
-  const [copiedKey, setCopiedKey] = useState(false)
 
   useEffect(() => {
     if (isOpen && license?.id) {
@@ -55,61 +54,6 @@ export default function CompanyLicenseManageModal({ license, isOpen, onClose, on
     }
   }
 
-  const handleCopyKey = () => {
-    if (license?.licenseKey) {
-      navigator.clipboard.writeText(license.licenseKey)
-      setCopiedKey(true)
-      setTimeout(() => setCopiedKey(false), 2000)
-    }
-  }
-
-  const handleDownloadQR = async () => {
-    try {
-      const res = await api.get(`/licenses/${license.id}/qrcode`, { responseType: 'blob' })
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'image/png' }))
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `license-${license.licenseKey || license.id}-qr.png`)
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error('Failed to download QR', err)
-      setError('Failed to download offline QR code.')
-    }
-  }
-
-  const handleDownloadLicFile = () => {
-    try {
-      const data = JSON.stringify({
-        licenseKey: license.licenseKey,
-        licenseId: license.id,
-        productId: license.productId,
-        productName: pName,
-        licenseType: license.licenseType,
-        maxActivations: license.maxActivations,
-        totalSeats: license.totalSeats || license.maxActivations,
-        issuedDate: license.issuedDate,
-        expiryDate: license.expiryDate,
-        buyer: buyerName,
-        offlineFallback: true,
-        generatedAt: new Date().toISOString()
-      }, null, 2)
-      const blob = new Blob([data], { type: 'application/json' })
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.setAttribute('download', `${license.licenseKey || ('license-' + license.id)}.lic`)
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      window.URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error('Failed to export license file', err)
-      setError('Failed to export license file.')
-    }
-  }
 
   if (!isOpen || !license) return null
 
@@ -248,44 +192,6 @@ export default function CompanyLicenseManageModal({ license, isOpen, onClose, on
               <p className="text-sm font-bold text-slate-800 dark:text-slate-200 mt-0.5">
                 {expDate ? expDate.toLocaleDateString() : 'Never'}
               </p>
-            </div>
-          </div>
-
-          {/* Key & Offline Fallback Action Bar */}
-          <div className="p-3.5 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center space-x-2">
-                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Key:</span>
-                <span className="font-mono text-xs font-bold text-indigo-600 dark:text-indigo-400 select-all">
-                  {license.licenseKey || 'N/A'}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleCopyKey}
-                  className="px-2 py-0.5 text-[11px] font-semibold rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
-                >
-                  {copiedKey ? 'Copied!' : 'Copy'}
-                </button>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={handleDownloadQR}
-                  className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors flex items-center"
-                >
-                  <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
-                  Offline QR
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDownloadLicFile}
-                  className="px-2.5 py-1.5 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-colors flex items-center"
-                >
-                  <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                  Offline .lic File
-                </button>
-              </div>
             </div>
           </div>
 
