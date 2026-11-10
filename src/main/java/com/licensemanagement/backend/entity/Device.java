@@ -35,6 +35,29 @@ public class Device {
     private LocalDateTime createdAt;
     @Column(name = "last_seen")
     private LocalDateTime lastSeen;
+
+    // FR-02: Individual hardware components stored for tolerance scoring
+    @Column(name = "mac_address")
+    private String macAddress;
+
+    @Column(name = "cpu_id")
+    private String cpuId;
+
+    @Column(name = "motherboard_id")
+    private String motherboardId;
+
+    @Column(name = "install_id", unique = true)
+    private String installId;
+
+    // FR-11: Clone / VM detection flags
+    @Column(name = "is_vm")
+    private Boolean isVm = false;
+
+    @Column(name = "clone_detected")
+    private Boolean cloneDetected = false;
+
+    @Column(name = "clone_of_device_id")
+    private Long cloneOfDeviceId;
     @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToOne
     @JoinColumn(name = "user_id", insertable = false, updatable = false)

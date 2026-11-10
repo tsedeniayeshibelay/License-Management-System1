@@ -28,6 +28,7 @@ import com.licensemanagement.backend.repository.PendingQRActivationRepository;
 import com.licensemanagement.backend.repository.OfflineRequestLogRepository;
 import com.licensemanagement.backend.repository.UsageLogRepository;
 import com.licensemanagement.backend.entity.UsageLog;
+import com.licensemanagement.backend.util.KeyHierarchyService;
 import com.licensemanagement.backend.util.CryptoUtil;
 import com.licensemanagement.backend.util.QRCodeGenerator;
 import org.springframework.web.multipart.MultipartFile;
@@ -69,6 +70,8 @@ public class ActivationService {
     private final CryptoUtil cryptoUtil;
     private final ObjectMapper objectMapper;
     private final AnomalyDetectionService anomalyDetectionService;
+    private final FingerprintService fingerprintService;
+    private final KeyHierarchyService keyHierarchyService;
     private final WebhookService webhookService;
     private final CacheManager cacheManager;
     private final ProductRepository productRepository;
@@ -143,11 +146,39 @@ public class ActivationService {
                 newDevice.setMachineId(request.getMachineId());
                 newDevice.setDeviceName(request.getDeviceName());
                 newDevice.setOs(request.getOs());
-                newDevice.setFingerprint(request.getMachineId());  
+                newDevice.setFingerprint(request.getMachineId());
+                // FR-02: Store extra hardware fingerprint attributes
+                newDevice.setMacAddress(request.getMacAddress());
+                newDevice.setCpuId(request.getCpuId());
+                newDevice.setMotherboardId(request.getMotherboardId());
+                newDevice.setInstallId(request.getInstallationId());
+                // FR-11: VM detection
+                FingerprintService.FingerprintAttributes attrs = new FingerprintService.FingerprintAttributes(
+                    request.getMachineId(), request.getMacAddress(), request.getCpuId(),
+                    request.getMotherboardId(), request.getInstallationId(),
+                    request.getVmHint(), Boolean.TRUE.equals(request.getIsVm())
+                );
+                boolean vmDetected = fingerprintService.detectVirtualMachine(attrs)
+                        || Boolean.TRUE.equals(request.getIsVm());
+                newDevice.setIsVm(vmDetected);
                 newDevice.setLastSeen(LocalDateTime.now());
                 newDevice.setIsActive(true);
                 return deviceRepository.save(newDevice);
             });
+
+            // FR-11: Clone detection — check if installId already registered on another machine
+            if (request.getInstallationId() != null && !request.getInstallationId().isBlank()) {
+                fingerprintService.detectCloneByInstallId(request.getInstallationId(), request.getMachineId())
+                    .ifPresent(originalDevice -> {
+                        device.setCloneDetected(true);
+                        device.setCloneOfDeviceId(originalDevice.getId());
+                        deviceRepository.save(device);
+                        fingerprintService.flagAsClone(device, originalDevice, license.getCompanyId());
+                    });
+            }
+
+            // FR-11: Block clone activations
+            validationService.validateNotClone(device);
             device.setLastSeen(LocalDateTime.now());
             deviceRepository.save(device);
             Long deviceId = device.getId();
@@ -680,6 +711,8 @@ public class ActivationService {
                     .companyId(String.valueOf(license.getCompanyId()))
                     .licenseType(license.getLicenseType().name())
                     .issuedAt(System.currentTimeMillis())
+                    .featureFlags(license.getFeatureFlags())
+                    .containerType("DEVICE_BOUND")
                     .build();
             
             String payloadJson = objectMapper.writeValueAsString(payload);
@@ -1041,17 +1074,57 @@ public class ActivationService {
                     .companyId(String.valueOf(license.getCompanyId()))
                     .licenseType(license.getLicenseType().name())
                     .issuedAt(System.currentTimeMillis())
+                    .featureFlags(license.getFeatureFlags())
+                    .containerType("DEVICE_BOUND")
                     .build();
             
             String payloadJson = objectMapper.writeValueAsString(payload);
-            String signature = cryptoUtil.sign(payloadJson);
-            
+
+            // FR-03: v2 encrypted container — DEVICE_BOUND uses fingerprint-derived key
+            String containerType = payload.getContainerType() != null ? payload.getContainerType() : "DEVICE_BOUND";
+            String fpForEncrypt  = "DEVICE_BOUND".equals(containerType) ? payload.getDeviceFingerprint() : null;
+            String encryptedContainer = cryptoUtil.encryptContainer(payloadJson, containerType, fpForEncrypt);
+            // FR-10: Use per-product signing key if hierarchy is unlocked, else fall back to root key
+            String productSku = payload.getProductId();
+            String legacySignature = null;
+            if (keyHierarchyService.isUnlocked() && productSku != null) {
+                legacySignature = keyHierarchyService.signWithProductKey(productSku, payloadJson);
+            }
+            if (legacySignature == null) {
+                legacySignature = cryptoUtil.sign(payloadJson);
+            }
             return OfflineActivationResponse.builder()
                     .payload(java.util.Base64.getEncoder().encodeToString(payloadJson.getBytes("UTF-8")))
-                    .signature(signature)
+                    .signature(legacySignature)
+                    .encryptedContainer(encryptedContainer)
+                    .containerType(containerType)
+                    .formatVersion("2")
                     .build();
         } catch (Exception e) {
             throw new RuntimeException("Failed to generate offline activation payload", e);
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // FR-05: Sequence number + receipt confirmation
+    // -------------------------------------------------------------------------
+
+    private long getNextSequenceNumber(String licenseKey) {
+        Long max = offlineRequestLogRepository.findMaxSequenceNumberByLicenseKey(licenseKey);
+        return (max == null ? 0L : max) + 1L;
+    }
+
+    // FR-05: Client confirms receipt � closes the offline activation loop
+    @Transactional
+    public boolean confirmOfflineReceipt(String receiptNonce, String licenseKey) {
+        return offlineRequestLogRepository.findByReceiptNonce(receiptNonce)
+                .map(entry -> {
+                    if (Boolean.TRUE.equals(entry.getReceiptConfirmed())) return true;
+                    entry.setReceiptConfirmed(true);
+                    offlineRequestLogRepository.save(entry);
+                    log.info("Offline receipt confirmed for license {} nonce {}", licenseKey, receiptNonce);
+                    return true;
+                })
+                .orElse(false);
     }
 }

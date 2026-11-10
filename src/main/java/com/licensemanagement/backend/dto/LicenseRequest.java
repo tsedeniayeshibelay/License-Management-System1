@@ -47,4 +47,11 @@ public class LicenseRequest {
     private boolean hardwareLocked;
     private List<String> allowedDomains;
     private Map<String, Object> customAttributes;
+
+    // FR-04: Usage-counted license — max allowed uses
+    @Min(value = 1, message = "Usage limit must be at least 1")
+    private Integer usageLimit;
+
+    // FR-02: Fingerprint tolerance (0 = exact match, 1 = 1 attribute may differ, etc.)
+    private Integer fingerprintTolerance;
 }

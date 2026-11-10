@@ -48,6 +48,11 @@ function Register() {
       setError("Passwords do not match!")
       return
     }
+
+    if ((formData.role === 'COMPANY' || formData.role === 'BULK_BUYER') && !formData.company.trim()) {
+      setError("Company name is required for this account type.")
+      return
+    }
     
     setIsLoading(true)
     
@@ -60,7 +65,7 @@ function Register() {
         role: formData.role,
       }
       if (formData.role === 'COMPANY' || formData.role === 'BULK_BUYER') {
-        payload.company = formData.company
+        payload.company = formData.company.trim()
       }
 
       // 1. Register User
@@ -81,11 +86,12 @@ function Register() {
       }, 1000)
     } catch (err) {
       if (err.response?.data?.errors) {
-        // If Spring Boot returns validation errors, grab the first one
+        // Spring Boot Bean Validation errors (field → message map)
         const firstErrorKey = Object.keys(err.response.data.errors)[0]
         setError(err.response.data.errors[firstErrorKey])
       } else {
-        setError(err.response?.data?.message || 'Registration failed. Please try again.')
+        // Service/controller errors come back as { error: "..." } or { message: "..." }
+        setError(err.response?.data?.error || err.response?.data?.message || 'Registration failed. Please try again.')
       }
     } finally {
       setIsLoading(false)

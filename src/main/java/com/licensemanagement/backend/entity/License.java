@@ -47,6 +47,21 @@ public class License {
     private Boolean hardwareLocked = false;
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    // FR-04: Feature-based licensing — comma-separated feature keys (e.g. "EXPORT,API,ANALYTICS")
+    @Column(name = "feature_flags", length = 500)
+    private String featureFlags;
+
+    // FR-04: Usage-counted licensing — max allowed uses and current used count
+    @Column(name = "usage_limit")
+    private Integer usageLimit;
+
+    @Column(name = "usage_count")
+    private Integer usageCount = 0;
+
+    // FR-02: Multi-attribute fingerprint tolerance — number of attributes that may differ
+    @Column(name = "fingerprint_tolerance")
+    private Integer fingerprintTolerance = 1;
     @ManyToOne
     @JoinColumn(name = "user_id", insertable = false, updatable = false)
     private User user;

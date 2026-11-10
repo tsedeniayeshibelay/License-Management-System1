@@ -15,4 +15,10 @@ public interface DeviceRepository extends JpaRepository<Device, Long> {
 
     @org.springframework.data.jpa.repository.Query("SELECT d FROM Device d LEFT JOIN FETCH d.user ORDER BY d.createdAt DESC")
     List<Device> findAllWithUser();
+
+    // FR-11: Clone detection — find a device with same installId but different machineId
+    Optional<Device> findByInstallId(String installId);
+
+    // FR-11: Find all flagged clones
+    List<Device> findByCloneDetectedTrue();
 }

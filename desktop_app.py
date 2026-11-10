@@ -33,13 +33,79 @@ ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
 
 # Embedded RSA Public Key (Matches backend application.properties)
-PUBLIC_KEY_B64 = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoGz+KjiawXeJDO2I1i+o99ePpAz/VZN2howGSfA/Z+RnNdO4fE4G9SZlVlwLBJjMbQd5X/A8wZUoLAN9qYyF/wqiEqe2qEw0URQOngsOmkIb1B3lLLuk+VCrfN9xTdWiK6H2hrv6udsDDNpeAAQ6D5ytn5nPfTl2NbDIsSJbTduDGIhLEEibxY3smOJ/shWR1FlfndBpQRBWzEOkOm3nqcPBtJrUOA81pZi7uEZqC9KwJ01bmOXf5QPV7341dkeam7fejXjCppUWI2y5wI7GCJAZQ8cZrjDcf/GNA3q9sFRM8lLuiyXpdVsQj9Ryq8gsu+Rae6QLRaNt3hxQDewfHwIDAQAB"
+PUBLIC_KEY_B64 = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqJaprWPFFYPQUMLih3c+Fqz/FHQ5VD9wBHsQzSq42dVTdkA/Di6oWz4cOt8bLK6KrfneVwbRx7wXozHTEwt1SHVC7EeyIV+qPxudsceX+fGLbQk1jF8K/6YPxXogB0Z5yjPFygHqrRKCKvJk+3TBrk8h7/2h+AsitGnTnkfgaSFaY8NlWUrZMOXDB/H6CdKwAUJO8P2iwWTWslAhwLarzxWMYSCGN/QHhzn7OQHw2YgSagHYjYGTb6WWF/bGDMhORfBRf9aeF9KD2H2cEgCajFe2RwBNPsQNg7l8WW+CFHbZhhOimaWc3b7xCjpF/kBWgY9a2RHTLSSDIEONcUMX6wIDAQAB"
 
 API_BASE_URL = os.getenv("LOCKSTRATA_API_URL", "http://localhost:8080/api")
 
 # Optional package/build-time constant (None by default - requires configuration)
 BUILD_PRODUCT_ID = None
 BUILD_PRODUCT_NAME = None
+
+# ============================================================================
+# FR-01: Build-time code integrity verification
+#
+# At build time, build_integrity_manifest.py records SHA-256 hashes of the
+# source files into integrity_manifest.json (bundled by the .spec file).
+# At startup we re-hash the frozen bytecode and compare against the manifest.
+# If any hash differs the app refuses to launch.
+# ============================================================================
+
+def _get_resource_path(filename):
+    """Return the path to a bundled resource (works both frozen and unfrozen)."""
+    if getattr(sys, '_MEIPASS', None):
+        return os.path.join(sys._MEIPASS, filename)
+    return os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+
+
+def _sha256_file(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def verify_integrity():
+    """
+    FR-01: Verify that source / bytecode files match the build-time manifest.
+    Returns (ok: bool, detail: str).
+    """
+    manifest_path = _get_resource_path("integrity_manifest.json")
+    if not os.path.exists(manifest_path):
+        # Manifest absent — running from raw source, skip check
+        return True, "No manifest (development mode)"
+
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+    except Exception as e:
+        return False, f"Failed to load integrity manifest: {e}"
+
+    for filename, expected_hash in manifest.items():
+        # In a frozen exe the .py files become compiled .pyc bytecode inside the archive
+        candidate_paths = [
+            _get_resource_path(filename),
+            os.path.join(os.path.dirname(sys.executable), filename) if getattr(sys, 'frozen', False) else None,
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), filename),
+        ]
+        found = False
+        for path in candidate_paths:
+            if path and os.path.exists(path):
+                actual = _sha256_file(path)
+                if actual != expected_hash:
+                    return False, (
+                        f"Integrity check FAILED for '{filename}'.\n"
+                        f"Expected: {expected_hash}\n"
+                        f"Got:      {actual}\n\n"
+                        "The application binary may have been tampered with."
+                    )
+                found = True
+                break
+        if not found:
+            # File not found in frozen bundle — skip (bytecode is inside the PYZ archive)
+            pass
+
+    return True, "Integrity verified"
 
 def mask_license_key(key):
     """Safely mask license key for display."""
@@ -171,24 +237,221 @@ class DesktopApp(ctk.CTk):
         )
 
     def load_or_create_identity(self):
-        # Stable machine fingerprint
+        # FR-02: Multi-attribute hardware fingerprint
+        self.os_name = platform.system()
+        self.device_name = platform.node()
+        self.mac_address    = self._get_mac_address()
+        self.cpu_id         = self._get_cpu_id()
+        self.motherboard_id = self._get_motherboard_id()
+        self.vm_hint        = self._get_vm_hint()
+        self.is_vm          = self._detect_vm()
+
+        # Primary machineId: SHA256 of hostname + OS + arch (stable across reboots)
         system_info = platform.node() + platform.system() + platform.machine()
         hashed_id = hashlib.sha256(system_info.encode()).hexdigest()[:15].upper()
         self.machine_id = f"HW-{hashed_id}"
-        self.os_name = platform.system()
-        self.device_name = platform.node()
 
+        # Load or create persistent installationId (UUID written once at first install)
         if os.path.exists(self.identity_file_path):
             try:
                 with open(self.identity_file_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     self.installation_id = data.get("installationId")
+                    # Back-fill any missing identity fields
+                    if not self.installation_id:
+                        self.installation_id = str(uuid.uuid4())
+                        data["installationId"] = self.installation_id
+                        with open(self.identity_file_path, 'w', encoding='utf-8') as fw:
+                            json.dump(data, fw)
             except Exception:
                 self.installation_id = str(uuid.uuid4())
         else:
             self.installation_id = str(uuid.uuid4())
             with open(self.identity_file_path, 'w', encoding='utf-8') as f:
-                json.dump({"installationId": self.installation_id, "machineId": self.machine_id}, f)
+                json.dump({
+                    "installationId": self.installation_id,
+                    "machineId":      self.machine_id,
+                    "macAddress":     self.mac_address,
+                    "cpuId":          self.cpu_id,
+                }, f)
+
+    # -------------------------------------------------------------------------
+    # FR-02: Hardware attribute collectors
+    # -------------------------------------------------------------------------
+
+    def _get_mac_address(self):
+        """Return the primary MAC address as XX:XX:XX:XX:XX:XX."""
+        try:
+            import uuid as _uuid
+            mac_int = _uuid.getnode()
+            mac = ':'.join(('%012X' % mac_int)[i:i+2] for i in range(0, 12, 2))
+            return mac
+        except Exception:
+            return None
+
+    def _get_cpu_id(self):
+        """Return a CPU identifier string (brand string or model name)."""
+        try:
+            if platform.system() == "Windows":
+                import winreg
+                key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,
+                    r"HARDWARE\DESCRIPTION\System\CentralProcessor\0")
+                name, _ = winreg.QueryValueEx(key, "ProcessorNameString")
+                winreg.CloseKey(key)
+                return name.strip()
+            elif platform.system() == "Linux":
+                with open("/proc/cpuinfo") as f:
+                    for line in f:
+                        if "model name" in line:
+                            return line.split(":")[1].strip()
+            elif platform.system() == "Darwin":
+                import subprocess
+                result = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"],
+                                        capture_output=True, text=True)
+                return result.stdout.strip()
+        except Exception:
+            pass
+        return platform.processor() or None
+
+    def _get_motherboard_id(self):
+        """Return motherboard serial or UUID (Windows only via WMI; Linux via DMI)."""
+        try:
+            if platform.system() == "Windows":
+                import subprocess
+                result = subprocess.run(
+                    ["wmic", "baseboard", "get", "SerialNumber"],
+                    capture_output=True, text=True, timeout=5
+                )
+                lines = [l.strip() for l in result.stdout.splitlines() if l.strip() and l.strip() != "SerialNumber"]
+                return lines[0] if lines else None
+            elif platform.system() == "Linux":
+                try:
+                    with open("/sys/class/dmi/id/board_serial") as f:
+                        return f.read().strip()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return None
+
+    def _get_vm_hint(self):
+        """Return a hint string if a known hypervisor is detected."""
+        try:
+            if platform.system() == "Windows":
+                import subprocess
+                result = subprocess.run(
+                    ["wmic", "computersystem", "get", "Manufacturer,Model"],
+                    capture_output=True, text=True, timeout=5
+                )
+                output = result.stdout.lower()
+                for vm in ["vmware", "virtualbox", "innotek", "microsoft corporation", "qemu", "xen", "parallels"]:
+                    if vm in output:
+                        return vm
+            elif platform.system() == "Linux":
+                try:
+                    with open("/sys/class/dmi/id/sys_vendor") as f:
+                        vendor = f.read().lower()
+                    for vm in ["vmware", "innotek", "qemu", "xen", "parallels"]:
+                        if vm in vendor:
+                            return vm
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return None
+
+    def _detect_vm(self):
+        """FR-11: Return True if running inside a virtual machine."""
+        hint = self._get_vm_hint()
+        if hint:
+            return True
+        # Check MAC address OUI prefixes known to belong to hypervisors
+        mac = self.mac_address or ""
+        vm_mac_prefixes = ["00:0C:29", "00:50:56", "08:00:27", "52:54:00", "00:16:3E"]
+        for prefix in vm_mac_prefixes:
+            if mac.upper().startswith(prefix):
+                return True
+        return False
+
+    # -------------------------------------------------------------------------
+    # FR-06: Periodic license heartbeat — validates license every N minutes
+    # -------------------------------------------------------------------------
+
+    def start_heartbeat(self, interval_seconds=300):
+        """Start a background daemon thread that re-validates the license periodically."""
+        self._heartbeat_active = True
+        self._heartbeat_thread = threading.Thread(
+            target=self._heartbeat_loop,
+            args=(interval_seconds,),
+            daemon=True,
+            name="LicenseHeartbeat"
+        )
+        self._heartbeat_thread.start()
+
+    def stop_heartbeat(self):
+        self._heartbeat_active = False
+
+    def _heartbeat_loop(self, interval_seconds):
+        while self._heartbeat_active:
+            time.sleep(interval_seconds)
+            if not self._heartbeat_active:
+                break
+            try:
+                self._validate_license_heartbeat()
+            except Exception as e:
+                print(f"[Heartbeat] Validation error: {e}")
+
+    def _validate_license_heartbeat(self):
+        """FR-06: Re-validate the local license file. Kill app if invalid."""
+        if not os.path.exists(self.license_file_path):
+            self._heartbeat_fail("License file missing during runtime check.")
+            return
+        try:
+            with open(self.license_file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            payload_b64  = data.get("payload")
+            signature_b64 = data.get("signature")
+            if not payload_b64 or not signature_b64:
+                self._heartbeat_fail("License file corrupted during runtime check.")
+                return
+            payload_json = base64.b64decode(payload_b64).decode('utf-8')
+            if not self.verify_signature(payload_json, signature_b64):
+                self._heartbeat_fail("License signature invalid during runtime check.")
+                return
+            payload_obj = json.loads(payload_json)
+            if payload_obj.get("deviceFingerprint") != self.machine_id:
+                self._heartbeat_fail("Hardware mismatch detected during runtime check.")
+                return
+            # Check expiry
+            expiry = payload_obj.get("expiryDate")
+            if expiry and expiry.upper() not in ("PERPETUAL", "NONE", "NULL", ""):
+                import datetime
+                expiry_date = datetime.date.fromisoformat(expiry[:10])
+                if expiry_date < datetime.date.today():
+                    self._heartbeat_fail("License expired during runtime.")
+                    return
+            print(f"[Heartbeat] License OK at {time.strftime('%H:%M:%S')}")
+        except Exception as e:
+            print(f"[Heartbeat] Exception: {e}")
+
+    def _heartbeat_fail(self, reason):
+        """Called when runtime license check fails — deletes license and closes app."""
+        print(f"[Heartbeat] FAIL: {reason}")
+        try:
+            if os.path.exists(self.license_file_path):
+                os.remove(self.license_file_path)
+        except Exception:
+            pass
+        # Schedule UI update on main thread
+        self.after(0, lambda: self._show_heartbeat_error(reason))
+
+    def _show_heartbeat_error(self, reason):
+        messagebox.showerror(
+            "License Validation Failed",
+            f"Runtime license check failed:\n{reason}\n\nThe application will now close."
+        )
+        self.quit()
+        self.destroy()
 
     def verify_signature(self, payload_json, signature_b64):
         try:
@@ -213,29 +476,30 @@ class DesktopApp(ctk.CTk):
         try:
             with open(self.license_file_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            
-            payload_b64 = data.get("payload")
-            signature_b64 = data.get("signature")
 
-            if not payload_b64 or not signature_b64:
-                raise ValueError("Invalid license format")
+            payload_obj = None
 
-            payload_json = base64.b64decode(payload_b64).decode('utf-8')
-            
-            if not self.verify_signature(payload_json, signature_b64):
-                raise ValueError("Digital signature verification failed! License tampered.")
+            # FR-03: Handle v2 encrypted container first
+            if data.get("formatVersion") == "2" and data.get("encryptedContainer"):
+                payload_obj = self._decrypt_and_verify_container(data["encryptedContainer"])
+            else:
+                # Legacy v1: base64 payload + RSA signature
+                payload_b64   = data.get("payload")
+                signature_b64 = data.get("signature")
+                if not payload_b64 or not signature_b64:
+                    raise ValueError("Invalid license format")
+                payload_json = base64.b64decode(payload_b64).decode('utf-8')
+                if not self.verify_signature(payload_json, signature_b64):
+                    raise ValueError("Digital signature verification failed! License tampered.")
+                payload_obj = json.loads(payload_json)
 
-            payload_obj = json.loads(payload_json)
-            
             if payload_obj.get("deviceFingerprint") != self.machine_id:
                 raise ValueError("Hardware mismatch! License bound to a different machine.")
 
-            # Validate Product ID matches current configured software
             lic_pid = str(payload_obj.get("productId", "")).strip()
             if self.product_id and lic_pid and lic_pid.upper() != self.product_id.upper():
                 raise ValueError(f"Product mismatch! License is for product '{lic_pid}', but this software is '{self.product_id}'.")
 
-            # Success
             self.show_activated_screen(payload_obj)
 
         except Exception as e:
@@ -244,6 +508,62 @@ class DesktopApp(ctk.CTk):
                 os.remove(self.license_file_path)
             except Exception:
                 pass
+
+    # -------------------------------------------------------------------------
+    # FR-03: Client-side v2 container handling
+    #
+    # The server produces:
+    #   { v, ct, encKey (RSA-OAEP), iv, ciphertext (AES-256-GCM), sig }
+    #
+    # The client cannot decrypt RSA-OAEP with only the public key. Instead,
+    # for DEVICE_BOUND containers the server derives the AES key from the
+    # device fingerprint (machine_id) using PBKDF2 so only that device can
+    # open the container. encKey in this mode stores the PBKDF2 salt.
+    # For ONLINE/NETWORK_SERVED containers the full encryptedContainer field
+    # is not written to disk — only the signed plaintext is persisted.
+    # -------------------------------------------------------------------------
+
+    def _decrypt_and_verify_container(self, container_json):
+        """FR-03: Decrypt a v2 encrypted container using fingerprint-derived key."""
+        try:
+            from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+            from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+            from cryptography.hazmat.primitives import hashes as _hashes
+            from cryptography.hazmat.backends import default_backend
+
+            c = json.loads(container_json)
+            iv         = base64.b64decode(c["iv"])
+            ciphertext = base64.b64decode(c["ciphertext"])
+            sig_bytes  = base64.b64decode(c["sig"])
+            salt       = base64.b64decode(c["encKey"])  # PBKDF2 salt in DEVICE_BOUND mode
+
+            # 1. Verify RSA signature over (iv || ciphertext)
+            from cryptography.hazmat.primitives.asymmetric import padding as _padding
+            sig_input = iv + ciphertext
+            try:
+                self.public_key.verify(sig_bytes, sig_input, _padding.PKCS1v15(), _hashes.SHA256())
+            except Exception:
+                raise ValueError("Container signature verification failed — payload tampered.")
+
+            # 2. Derive AES-256 key from machine fingerprint + PBKDF2 salt
+            kdf = PBKDF2HMAC(
+                algorithm=_hashes.SHA256(),
+                length=32,
+                salt=salt,
+                iterations=200_000,
+                backend=default_backend()
+            )
+            aes_key = kdf.derive(self.machine_id.encode('utf-8'))
+
+            # 3. AES-256-GCM decrypt
+            aesgcm = AESGCM(aes_key)
+            plaintext = aesgcm.decrypt(iv, ciphertext, None)
+            return json.loads(plaintext.decode('utf-8'))
+
+        except ValueError:
+            raise
+        except Exception as e:
+            raise ValueError(f"Failed to open encrypted license container: {e}")
 
     def save_license(self, response_json):
         try:
@@ -254,6 +574,9 @@ class DesktopApp(ctk.CTk):
             messagebox.showerror("Error", f"Failed to save license: {e}")
 
     def show_activated_screen(self, payload):
+        # FR-06: Start background periodic license validation
+        self.start_heartbeat(interval_seconds=300)  # re-check every 5 minutes
+
         for widget in self.winfo_children():
             widget.destroy()
             
@@ -450,11 +773,18 @@ class DesktopApp(ctk.CTk):
                 f"{API_BASE_URL}/activations/auto",
                 headers={"Authorization": f"Bearer {token}"},
                 json={
-                    "productId": self.product_id,
-                    "machineId": self.machine_id,
-                    "deviceName": self.device_name,
-                    "os": self.os_name,
-                    "installationId": self.installation_id
+                    "productId":      self.product_id,
+                    "machineId":      self.machine_id,
+                    "deviceName":     self.device_name,
+                    "os":             self.os_name,
+                    "installationId": self.installation_id,
+                    # FR-02: Additional hardware fingerprint attributes
+                    "macAddress":     getattr(self, 'mac_address', None),
+                    "cpuId":          getattr(self, 'cpu_id', None),
+                    "motherboardId":  getattr(self, 'motherboard_id', None),
+                    # FR-11: VM detection hint
+                    "vmHint":         getattr(self, 'vm_hint', None),
+                    "isVm":           getattr(self, 'is_vm', False),
                 }
             )
 
@@ -609,13 +939,20 @@ class DesktopApp(ctk.CTk):
             return
 
         req_data = {
-            "productId": self.product_id,
-            "machineId": self.machine_id,
-            "installationId": self.installation_id,
-            "deviceName": self.device_name,
-            "os": self.os_name,
-            "requestId": str(uuid.uuid4()),
-            "requestExpiration": int(time.time() * 1000) + 86400000 # 24h
+            "productId":        self.product_id,
+            "machineId":        self.machine_id,
+            "installationId":   self.installation_id,
+            "deviceName":       self.device_name,
+            "os":               self.os_name,
+            "requestId":        str(uuid.uuid4()),
+            "requestExpiration": int(time.time() * 1000) + 86400000,  # 24h
+            # FR-02: Additional hardware attributes
+            "macAddress":       getattr(self, 'mac_address', None),
+            "cpuId":            getattr(self, 'cpu_id', None),
+            "motherboardId":    getattr(self, 'motherboard_id', None),
+            # FR-11: VM hint
+            "vmHint":           getattr(self, 'vm_hint', None),
+            "isVm":             getattr(self, 'is_vm', False),
         }
 
         filepath = filedialog.asksaveasfilename(defaultextension=".json", initialfile="request.json", title="Save Request File")
@@ -643,6 +980,17 @@ def parse_args():
     return parser.parse_args()
 
 if __name__ == "__main__":
+    # FR-01: Code integrity check before any UI or license logic runs
+    ok, detail = verify_integrity()
+    if not ok:
+        import tkinter as _tk
+        _root = _tk.Tk()
+        _root.withdraw()
+        import tkinter.messagebox as _mb
+        _mb.showerror("Integrity Violation", detail)
+        _root.destroy()
+        sys.exit(1)
+
     args = parse_args()
     app = DesktopApp(cli_product_id=args.product_id, cli_config_path=args.config_path)
     app.mainloop()

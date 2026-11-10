@@ -5,5 +5,7 @@ public enum LicenseType {
     PER_DEVICE,
     SUBSCRIPTION,
     VOLUME,
-    OPEN_SOURCE
+    OPEN_SOURCE,
+    FEATURE_BASED,    // FR-04: gates specific named features
+    USAGE_COUNTED     // FR-04: decrements a usage counter per activation
 }

@@ -35,6 +35,18 @@ public class ActivityLog {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    // FR-09: Tamper-evident hash chain — SHA-256 of this entry's canonical fields
+    @Column(name = "entry_hash", length = 64)
+    private String entryHash;
+
+    // FR-09: SHA-256 of the previous entry's entry_hash (chain link)
+    @Column(name = "previous_hash", length = 64)
+    private String previousHash;
+
+    // FR-09: RSA signature over (entry_hash + previous_hash)
+    @Column(name = "entry_signature", columnDefinition = "TEXT")
+    private String entrySignature;
+
     @ManyToOne
     @JoinColumn(name = "company_id", insertable = false, updatable = false)
     private Company company;

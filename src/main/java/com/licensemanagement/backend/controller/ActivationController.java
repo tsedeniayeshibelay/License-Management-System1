@@ -21,6 +21,7 @@ import java.util.List;
 public class ActivationController {
     private final ActivationService activationService;
     private final CurrentUserProvider currentUserProvider;
+    private final org.springframework.context.ApplicationContext applicationContext;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('CUSTOMER', 'BULK_BUYER')")
@@ -110,6 +111,37 @@ public class ActivationController {
     }
 
     // --- Management Endpoints ---
+
+    // FR-05: Offline receipt — client confirms it received and applied the license file
+    @PostMapping("/offline/receipt")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'BULK_BUYER')")
+    public ResponseEntity<java.util.Map<String, Object>> confirmOfflineReceipt(
+            @RequestBody java.util.Map<String, String> body) {
+        String receiptNonce = body.get("receiptNonce");
+        String licenseKey   = body.get("licenseKey");
+        if (receiptNonce == null || receiptNonce.isBlank()) {
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", "receiptNonce is required"));
+        }
+        boolean confirmed = activationService.confirmOfflineReceipt(receiptNonce, licenseKey);
+        return ResponseEntity.ok(java.util.Map.of("confirmed", confirmed,
+                "message", confirmed ? "Receipt acknowledged. Offline activation loop closed." :
+                        "Receipt nonce not found or already confirmed."));
+    }
+
+    // FR-09: Admin endpoint — verify the hash-chained audit trail
+    @GetMapping("/audit/verify")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<java.util.Map<String, Object>> verifyAuditChain() {
+        com.licensemanagement.backend.service.ActivityLogService auditService =
+                applicationContext.getBean(com.licensemanagement.backend.service.ActivityLogService.class);
+        boolean intact = auditService.verifyAuditChain();
+        return ResponseEntity.ok(java.util.Map.of(
+                "intact", intact,
+                "message", intact ? "Audit trail verified — no tampering detected."
+                        : "⚠️ AUDIT CHAIN INTEGRITY FAILURE — tampered entries detected!"));
+    }
+
 
     @GetMapping("/my-company")
     @PreAuthorize("hasRole('COMPANY')")

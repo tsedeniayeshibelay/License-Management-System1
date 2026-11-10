@@ -62,6 +62,19 @@ public class LicenseService {
         license.setUsedSeats(0);
         license.setIssuedDate(LocalDate.now());
         license.setExpiryDate(request.getExpiryDate());
+        // FR-04: Persist feature flags as comma-separated string
+        if (request.getFeatureFlags() != null && !request.getFeatureFlags().isEmpty()) {
+            license.setFeatureFlags(String.join(",", request.getFeatureFlags()));
+        }
+        // FR-04: Usage-counted license
+        if (request.getUsageLimit() != null) {
+            license.setUsageLimit(request.getUsageLimit());
+            license.setUsageCount(0);
+        }
+        // FR-02: Fingerprint tolerance
+        if (request.getFingerprintTolerance() != null) {
+            license.setFingerprintTolerance(request.getFingerprintTolerance());
+        }
         if (com.licensemanagement.backend.enums.LicenseType.VOLUME.equals(request.getLicenseType())) {
             license.setStatus("ACTIVE");
         } else {
